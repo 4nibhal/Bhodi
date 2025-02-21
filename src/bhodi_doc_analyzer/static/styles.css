@@ -1,0 +1,78 @@
+/* Layout general – pantalla completa */
+Screen {
+    background: #212529;
+    layout: vertical;
+    padding: 0;
+}
+
+/* Contenedor de conversación: ocupa todo el espacio disponible y es scrollable */
+#conversation_box {
+    height: 1fr;
+    layout: vertical;
+    overflow: auto;
+    padding: 1;
+    margin: 0;
+}
+
+/* Contenedor para cada bloque de mensaje */
+MessageBox {
+    layout: horizontal;
+    height: auto;
+    align-horizontal: center;
+    margin: 0;
+}
+
+/* Estilo base de cada mensaje, aprovechando mayor espacio horizontal */
+.message {
+    min-width: 25%;
+    max-width: 90%;
+    border: round #444444;  /* borde sutil redondeado */
+    padding: 0 1;
+    margin: 0 1;
+    background: #2a2e35;
+}
+
+/* Pregunta del usuario: burbuja a la izquierda con borde distintivo */
+.question {
+    align-horizontal: left;
+    background: #343a40;
+    border: round #007acc;  /* borde azul */
+    padding: 0 1;
+    margin: 0 3 0 0;       /* mayor margen a la derecha para empujar hacia la izquierda */
+}
+
+/* Respuesta de la IA: burbuja a la derecha con borde distintivo */
+.answer {
+    align-horizontal: right;
+    background: #44475a;
+    border: round #ff4500;  /* borde naranja */
+    padding: 0 1;
+    margin: 0 0 0 3;       /* mayor margen a la izquierda para empujar hacia la derecha */
+}
+
+/* Contenedor del input: fijo en la parte inferior, subido un poco más para evitar cortes con el Footer */
+#input_box {
+    dock: bottom;
+    height: auto;
+    layout: horizontal;
+    align-horizontal: center;
+    background: #212529;
+    padding: 0 1;
+    margin: 0 0 2 0;  /* aumento del margen inferior para levantar el bloque 1-1.5cm */
+}
+
+/* Input para el mensaje: ocupa la mayor parte del ancho */
+#message_input {
+    width: 75%;
+    background: #343a40;
+    padding: 0 1;
+    margin: 0;
+}
+
+/* Botón de envío: estilo simple y compacto */
+#send_button {
+    width: auto;
+    background: #6272a4;
+    padding: 0 1;
+    margin: 0;
+}

@@ -1,0 +1,8 @@
+
+models/
+chroma_db/
+__pycache__/
+data_to_vector/
+assistant_logs.txt
+src/bhodi_doc_analyzer.egg-info/
+uv.lock

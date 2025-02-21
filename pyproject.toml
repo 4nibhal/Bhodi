@@ -1,0 +1,24 @@
+[project]
+name = "bhodi-doc-analyzer"
+version = "0.1.0"
+requires-python = ">=3.10.0"
+dependencies = [
+    "deptry>=0.23.0",
+    "langchain>=0.3.18",
+    "langchain-chroma>=0.2.2",
+    "langchain-community>=0.3.17",
+    "langchain-huggingface>=0.1.2",
+    "langgraph>=0.2.73",
+    "pylint>=3.3.4",
+    "pypdf>=5.3.0",
+    "radon>=6.0.1",
+    "textual>=2.0.4",
+    "vulture>=2.14",
+]
+
+[project.scripts]
+bhodi-index = "indexer.cli:main"
+bhodi = "bhodi_doc_analyzer.main:main_menu"
+
+[tool.setuptools.package-data]
+"bhodi_doc_analyzer" = ["static/*.css"]
