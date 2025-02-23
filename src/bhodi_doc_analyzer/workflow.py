@@ -1,3 +1,10 @@
+"""
+Module bhodi_doc_analyzer.workflow
+
+This module builds and compiles the workflow for processing conversation context
+and generating responses.
+"""
+
 from typing import List, Any
 from typing_extensions import TypedDict
 
@@ -15,6 +22,14 @@ from indexer.config_indexer import persistent_retriever
 # AGENT STATE AND RESPONSE PARSER SETUP
 # =============================================================================
 class AgentState(TypedDict):
+    """
+    Typed dictionary representing the agent's state.
+    
+    Attributes:
+        messages (List[dict]): List of messages in the conversation.
+        context (str): The conversation context.
+        input (str): The user input.
+    """
     messages: List
     context: str
     input: str
@@ -33,7 +48,8 @@ answer_parser = PydanticOutputParser(pydantic_object=AssistantAnswer)
 # =============================================================================
 def retrieve_context(state: AgentState) -> dict:
     """
-    Retrieves context by querying both the volatile and persistent vectorstores, then applying the sequencer 
+    Retrieves context by querying both the volatile and persistent vectorstores,
+    then applying the sequencer 
     to refine and filter the combined documents.
     """
     query = state['input']
@@ -42,8 +58,7 @@ def retrieve_context(state: AgentState) -> dict:
     # Query the persistent retriever.
     persistent_docs = persistent_retriever.invoke(query)
     # Combine documents from both sources.
-    all_docs = volatile_docs + persistent_docs
-    
+    all_docs = volatile_docs + persistent_docs    
     # Apply the sequencer: rerank and further refine documents.
     sequenced_docs = sequence_documents(query, all_docs)
     
@@ -71,7 +86,7 @@ def generate_response(state: AgentState) -> dict:
     try:
         structured_obj = answer_parser.parse(raw_response)
         answer_text = structured_obj.answer
-    except Exception as e:
+    except ValueError as e:
         save_log(f"Parsing error: {e}")
         answer_text = raw_response  # Fallback to raw response
 
@@ -162,10 +177,10 @@ def sequence_documents(query: str, docs: List[Any]) -> List[Any]:
         List[Any]: Refined list of documents.
     """
     # Step 1: Rerank the documents.
-    reranked_docs = rerank_documents(query, docs)
-    
+    reranked_docs = rerank_documents(query, docs)    
     # Step 2: Optionally, apply summarization to each document if content is too long.
-    # Here we assume each document is an object with attribute 'page_content' and we update it with a summary.
+    # Here we assume each document is an object with attribute 'page_content'
+    #  and we update it with a summary.
     for doc in reranked_docs:
         if count_tokens(doc.page_content) > 300:
             # Replace content with a summary (could use a dedicated summarization model)

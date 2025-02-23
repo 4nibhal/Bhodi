@@ -1,3 +1,19 @@
+"""
+Module bhodi_doc_analyzer.assistant
+
+This module implements the chat application with a textual user interface for Bhodi.
+It includes the classes and functions required to:
+  - Configure and manage the appearance and interaction of the interface.
+  - Display user messages and generated responses.
+  - Integrate the processing workflow for conversations, which retrieves context from
+    both volatile and persistent vectorstores and generates responses using an LLM.
+
+Custom components defined in this module include:
+  - FocusableContainer: a focusable container widget for the conversation.
+  - MessageBox: a widget for displaying individual messages.
+  - ChatApp: the main application that orchestrates input, output, and conversation updates.
+"""
+
 from typing import Any, Dict, List
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -56,7 +72,8 @@ class ChatApp(App):
         with FocusableContainer(id="conversation_box"):
             welcome_message: str = (
                 "Welcome to the assistant!\n"
-                "Type your question, press Enter or click the 'Send' button, and wait for the response.\n"
+                "Type your question, press Enter or click the 'Send' button,\n"
+                "and wait for the response.\n"
                 "Below you will find some useful commands."
             )
             yield MessageBox(welcome_message, role="info")

@@ -1,3 +1,11 @@
+"""
+Module bhodi_doc_analyzer.config
+
+This module initializes the tokenizer, language model (LLM), embeddings,
+vectorstore (in-memory Chroma), sequencer (dedicated summarization model) and 
+reranker pipelines for Bhodi.
+"""
+
 import os
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 from langchain_community.chat_models import ChatLlamaCpp
@@ -56,8 +64,12 @@ sequencer = pipeline(
 )
 
 # Initialize the reranker pipeline using a Hugging Face cross-encoder model.
-reranker_tokenizer = AutoTokenizer.from_pretrained("cross-encoder/ms-marco-MiniLM-L-6-v2")
-reranker_model = AutoModelForSequenceClassification.from_pretrained("cross-encoder/ms-marco-MiniLM-L-6-v2")
+reranker_tokenizer = AutoTokenizer.from_pretrained(
+    "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    )
+reranker_model = AutoModelForSequenceClassification.from_pretrained(
+    "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    )
 reranker = pipeline(
     "text-classification",
     model=reranker_model,

@@ -1,3 +1,16 @@
+"""
+Module bhodi_doc_analyzer.chat_service
+
+This module provides services for generating chat responses using the language model.
+It integrates the language model invocation, response parsing, and logging, ensuring
+that technical prompts are processed and that any parsing errors are logged with a fallback
+to the raw response.
+
+Functions:
+    generate_chat_response(tech_prompt: str) -> str:
+        Generates a response from the language model using the provided prompt.
+"""
+
 from langchain_core.messages import HumanMessage
 from bhodi_doc_analyzer.config import llm
 from bhodi_doc_analyzer.workflow import answer_parser
@@ -19,7 +32,7 @@ def generate_chat_response(tech_prompt: str) -> str:
     try:
         structured = answer_parser.parse(raw_response)
         answer_text: str = structured.answer
-    except ValueError as error:  # Catching a more specific exception
+    except ValueError as error:
         save_log(f"Parsing error (structured mode): {error}")
         answer_text = raw_response  # Fallback to raw response if parsing fails
     return answer_text
