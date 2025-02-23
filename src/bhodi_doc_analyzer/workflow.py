@@ -31,7 +31,7 @@ answer_parser = PydanticOutputParser(pydantic_object=AssistantAnswer)
 # =============================================================================
 # PROMPT AND RESPONSE PROCESSING FUNCTIONS
 # =============================================================================
-def retrieve_context(state: dict) -> dict:
+def retrieve_context(state: AgentState) -> dict:
     """
     Retrieves context by querying both the volatile and persistent vectorstores, then applying the sequencer 
     to refine and filter the combined documents.
