@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Any
 from typing_extensions import TypedDict
 
 from langgraph.graph import StateGraph, END
@@ -7,7 +7,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.output_parsers import PydanticOutputParser
 
 
-from bhodi_doc_analyzer.config import retriever, llm
+from bhodi_doc_analyzer.config import retriever, llm, reranker, sequencer
 from bhodi_doc_analyzer.utils import count_tokens, fast_tokenize, save_log
 from indexer.config_indexer import persistent_retriever
 
@@ -31,51 +31,26 @@ answer_parser = PydanticOutputParser(pydantic_object=AssistantAnswer)
 # =============================================================================
 # PROMPT AND RESPONSE PROCESSING FUNCTIONS
 # =============================================================================
-def retrieve_context(state: AgentState) -> dict:
+def retrieve_context(state: dict) -> dict:
     """
-    Retrieve the conversation context from both the volatile (chat memory)
-    and the persistent (document index) vectorstores.
-    
-    The function queries both retrievers, concatenates their documents, and
-    returns a trimmed context.
+    Retrieves context by querying both the volatile and persistent vectorstores, then applying the sequencer 
+    to refine and filter the combined documents.
     """
     query = state['input']
-    # Query the volatile retriever (from chat config).
+    # Query the volatile retriever.
     volatile_docs = retriever.invoke(query)
-    # Query the persistent retriever (from document indexing).
+    # Query the persistent retriever.
     persistent_docs = persistent_retriever.invoke(query)
     # Combine documents from both sources.
     all_docs = volatile_docs + persistent_docs
-    context = "\n".join([doc.page_content for doc in all_docs])
+    
+    # Apply the sequencer: rerank and further refine documents.
+    sequenced_docs = sequence_documents(query, all_docs)
+    
+    context = "\n".join([doc.page_content for doc in sequenced_docs])
     if count_tokens(context) > 1000:
         context = context[:1000]
     return {"context": context}
-
-def summarize_text(text: str) -> str:
-    return text if len(text) < 1000 else text[:1000] + "..."
-
-def refine_prompt(context: str, user_input: str) -> str:
-    """
-    Refines the prompt by including context and the user input.
-    """
-    if count_tokens(context) > 1200:
-        context = summarize_text(context)
-    prompt = f"Context: {context}\nQuestion: {user_input}"
-    print(f"Prompt tokens: {count_tokens(prompt)}")
-    return prompt
-
-def transform_message(msg: dict):
-    """
-    Transforms a message dictionary into a valid message object acceptable by the LLM.
-    """
-    role = msg.get("role")
-    content = msg.get("content", "")
-    if role in ["question", "human", "user"]:
-        return HumanMessage(content=content)
-    if role in ["answer", "assistant", "ai"]:
-        return AIMessage(content=content)
-    # Fallback: use human message
-    return HumanMessage(content=content)
 
 def generate_response(state: AgentState) -> dict:
     """
@@ -109,6 +84,93 @@ def generate_response(state: AgentState) -> dict:
             answer_text = str(answer_text)
     
     return {"answer": answer_text}
+
+def summarize_text(text: str) -> str:
+    """
+    Generates a summary for long texts using a dedicated summarization model (sequencer).
+    
+    If the text is not too long, it is returned unchanged.
+    """
+    # Define el umbral a partir del cual se realiza el resumen
+    if len(text) < 2500:
+        return text
+    # Llama al pipeline de summarization (sequencer)
+    summary = sequencer(text, max_length=1500, min_length=500, truncation=True)
+    return summary[0]['summary_text']
+
+def refine_prompt(context: str, user_input: str) -> str:
+    """
+    Refines the prompt by including context and the user input.
+    """
+    if count_tokens(context) > 1200:
+        context = summarize_text(context)
+    prompt = f"Context: {context}\nQuestion: {user_input}"
+    print(f"Prompt tokens: {count_tokens(prompt)}")
+    return prompt
+
+def transform_message(msg: dict):
+    """
+    Transforms a message dictionary into a valid message object acceptable by the LLM.
+    """
+    role = msg.get("role")
+    content = msg.get("content", "")
+    if role in ["question", "human", "user"]:
+        return HumanMessage(content=content)
+    if role in ["answer", "assistant", "ai"]:
+        return AIMessage(content=content)
+    # Fallback: use human message
+    return HumanMessage(content=content)
+
+def rerank_documents(query: str, docs: List[Any]) -> List[Any]:
+    """
+    Reranks documents based on the similarity between the query and each document
+    using a Hugging Face reranker.
+    
+    Args:
+        query (str): The user query.
+        docs (List[Any]): List of documents (each with 'page_content' attribute).
+    
+    Returns:
+        List[Any]: Documents reranked in descending order of relevance.
+    """
+    scored_docs = []
+    for doc in docs:
+        result = reranker(
+            (query, doc.page_content),
+            padding=True,
+            truncation=True,
+            max_length=512
+        )
+        # Check if result is a list or a dict.
+        score = result[0]["score"] if isinstance(result, list) else result["score"]
+        scored_docs.append((score, doc))
+    ranked_docs = [doc for _, doc in sorted(scored_docs, key=lambda x: x[0], reverse=True)]
+    return ranked_docs
+
+def sequence_documents(query: str, docs: List[Any]) -> List[Any]:
+    """
+    Applies a series of steps to refine the ranking and content of retrieved documents.
+    
+    1. Applies the Hugging Face reranker to order documents.
+    2. Optionally summarizes documents that are too long.
+    
+    Args:
+        query (str): The user query.
+        docs (List[Any]): List of documents (each with 'page_content' attribute).
+        
+    Returns:
+        List[Any]: Refined list of documents.
+    """
+    # Step 1: Rerank the documents.
+    reranked_docs = rerank_documents(query, docs)
+    
+    # Step 2: Optionally, apply summarization to each document if content is too long.
+    # Here we assume each document is an object with attribute 'page_content' and we update it with a summary.
+    for doc in reranked_docs:
+        if count_tokens(doc.page_content) > 300:
+            # Replace content with a summary (could use a dedicated summarization model)
+            doc.page_content = summarize_text(doc.page_content)
+    return reranked_docs
 
 # =============================================================================
 # BUILDING THE WORKFLOW WITH LANGGRAPH (without persistent MemorySaver)

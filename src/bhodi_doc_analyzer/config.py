@@ -1,5 +1,5 @@
 import os
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 from langchain_community.chat_models import ChatLlamaCpp
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
@@ -28,7 +28,7 @@ llm = ChatLlamaCpp(
 )
 
 # =============================================================================
-# EMBEDDINGS, AND NON-PERSISTENT VECTORSTORE INITIALIZATION (For chat memory)
+# EMBEDDINGS AND NON-PERSISTENT VECTORSTORE INITIALIZATION
 # =============================================================================
 embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2",
@@ -43,3 +43,24 @@ vectorstore = Chroma(
 
 # Retriever for chat context retrieval (volatile).
 retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+
+# =============================================================================
+# SEQUENCER (SUMMARIZATION MODEL) AND RERANKER INITIALIZATION
+# =============================================================================
+# This is a dedicated summarization model used as a sequencer.
+sequencer = pipeline(
+    "summarization",
+    model="facebook/bart-large-cnn",
+    tokenizer="facebook/bart-large-cnn",
+    device=-1  # if using GPU 1; remove or set to -1 for CPU
+)
+
+# Initialize the reranker pipeline using a Hugging Face cross-encoder model.
+reranker_tokenizer = AutoTokenizer.from_pretrained("cross-encoder/ms-marco-MiniLM-L-6-v2")
+reranker_model = AutoModelForSequenceClassification.from_pretrained("cross-encoder/ms-marco-MiniLM-L-6-v2")
+reranker = pipeline(
+    "text-classification",
+    model=reranker_model,
+    tokenizer=reranker_tokenizer,
+    device=-1  # if using GPU 1; remove or set to -1 for CPU
+)
