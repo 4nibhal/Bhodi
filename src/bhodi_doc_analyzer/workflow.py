@@ -46,7 +46,7 @@ answer_parser = PydanticOutputParser(pydantic_object=AssistantAnswer)
 # =============================================================================
 # PROMPT AND RESPONSE PROCESSING FUNCTIONS
 # =============================================================================
-def retrieve_context(state: AgentState) -> dict:
+def retrieve_context(state: AgentState) -> AgentState:
     """
     Retrieves context by querying both the volatile and persistent vectorstores,
     then applying the sequencer 
@@ -67,7 +67,7 @@ def retrieve_context(state: AgentState) -> dict:
         context = context[:1000]
     return {"context": context}
 
-def generate_response(state: AgentState) -> dict:
+def generate_response(state: AgentState) -> AgentState:
     """
     Generates an LLM response using the refined prompt and conversation context.
     The response is then parsed using the structured output parser, with a fallback
@@ -123,7 +123,7 @@ def refine_prompt(context: str, user_input: str) -> str:
     print(f"Prompt tokens: {count_tokens(prompt)}")
     return prompt
 
-def transform_message(msg: dict):
+def transform_message(msg: AgentState):
     """
     Transforms a message dictionary into a valid message object acceptable by the LLM.
     """
@@ -197,6 +197,31 @@ workflow.set_entry_point("retrieve")
 workflow.add_edge("retrieve", "generate")
 workflow.add_edge("generate", END)
 
-
 # Compile the workflow without a checkpointer.
-graph = workflow.compile()
+compiled_graph = workflow.compile()
+
+
+def execute_workflow(state: AgentState) -> AgentState:
+    """
+    Executes the compiled workflow by running the 'retrieve' node
+    and then the 'generate' node, updating the state accordingly.
+    """
+    state.update(retrieve_context(state))
+    state.update(generate_response(state))
+    return state
+
+
+class CallableStateGraph:
+    """
+    A wrapper that makes a compiled state graph callable.
+    """
+    def __init__(self, graph, executor):
+        self.graph = graph
+        self.executor = executor
+
+    def __call__(self, state: AgentState) -> AgentState:
+        return self.executor(state)
+
+
+# Wrap the compiled graph with our callable wrapper using execute_workflow.
+graph = CallableStateGraph(compiled_graph, execute_workflow)

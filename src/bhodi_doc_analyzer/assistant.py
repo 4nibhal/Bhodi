@@ -5,8 +5,8 @@ This module implements the chat application with a textual user interface for Bh
 It includes the classes and functions required to:
   - Configure and manage the appearance and interaction of the interface.
   - Display user messages and generated responses.
-  - Integrate the processing workflow for conversations, which retrieves context from
-    both volatile and persistent vectorstores and generates responses using an LLM.
+  - Integrate the processing workflow for conversations via a StateGraph that retrieves context
+    and generates responses using the language model (LLM).
 
 Custom components defined in this module include:
   - FocusableContainer: a focusable container widget for the conversation.
@@ -14,16 +14,19 @@ Custom components defined in this module include:
   - ChatApp: the main application that orchestrates input, output, and conversation updates.
 """
 
-from typing import Any, Dict, List
+import asyncio
+from typing import List
+
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal
 from textual.widget import Widget
 from textual.widgets import Button, Footer, Header, Input, Markdown
 
-from bhodi_doc_analyzer.workflow import retrieve_context, generate_response
+# Importing the compiled workflow graph from workflow.py.
+from bhodi_doc_analyzer.workflow import graph, AgentState
 
-# Import the volatile vectorstore from chat config and the persistent one.
+# Import the volatile (in-memory) vectorstore and the persistent one.
 from bhodi_doc_analyzer.config import vectorstore as volatile_vectorstore
 from indexer.config_indexer import persistent_vectorstore
 
@@ -62,7 +65,7 @@ class ChatApp(App):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         # Initialize conversation history as a list of message dictionaries.
-        self.conversation_history: List[Dict[str, str]] = []
+        self.conversation_history: List[AgentState[str, str]] = []
 
     def compose(self) -> ComposeResult:
         """
@@ -110,11 +113,11 @@ class ChatApp(App):
 
     async def process_conversation(self) -> None:
         """
-        Processes a single conversation exchange:
-        - Retrieves user input and updates the conversation history.
-        - Updates both the in-memory (volatile) and persistent vectorstores with new messages.
-        - Retrieves context from both vectorstores.
-        - Generates the assistant's response using the updated state.
+        Processes a single conversation exchange by:
+          - Capturing user input and updating the conversation history.
+          - Building the agent state and executing the workflow via a StateGraph.
+          - Updating the UI with the generated answer.
+          - Updating both the volatile and persistent vectorstores with new messages.
         """
         message_input: Input = self.query_one("#message_input", Input)
         if message_input.value == "":
@@ -134,16 +137,15 @@ class ChatApp(App):
             message_input.value = ""
 
         # Build agent state.
-        agent_state: Dict[str, Any] = {
+        agent_state: AgentState = {
             "messages": self.conversation_history,
-            "input": user_message
+            "input": user_message,
+            "context": ""  # initial context value
         }
 
-        # Retrieve vector-based context using our workflow function.
-        context_result = retrieve_context(agent_state)
-        agent_state.update(context_result)
-        # Generate the assistant's response.
-        result: dict = generate_response(agent_state)
+        # Invoke the workflow (StateGraph) asynchronously using asyncio.to_thread because
+        # the graph.run method is synchronous.
+        result: AgentState = await asyncio.to_thread(graph, agent_state)
         answer_text: str = result.get("answer", "No response")
 
         # Append the answer to the conversation history and update the UI.
