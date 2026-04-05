@@ -6,6 +6,14 @@ data_to_vector/
 assistant_logs.txt
 src/bhodi_doc_analyzer.egg-info/
 
+# Python/uv
+uv.lock
+src/*.egg-info/
+
+# Environment and runtime artifacts
+.python-version
+.rules
+
 # >>> aiwf-runtime:start
 # Managed by aiwf. Do not edit manually.
 .opencode/
