@@ -1,16 +1,19 @@
 """
-Utility functions for Bhodi.
+Deprecated: This module is a compatibility shim that re-exports from bhodi_platform.
 
-This module provides helper functions for tokenization, token counting,
-and logging with timestamps.
+All product logic has been moved to src/bhodi_platform/.
+This module will be removed in a future release.
 """
 
-import datetime
-from bhodi_doc_analyzer.config import tokenizer
+from bhodi_platform.answering.runtime import get_tokenizer
+from bhodi_platform.interfaces.tui.chat import _save_log as save_log
 
-# =============================================================================
-# TOKENIZE/INDEXING UTILS
-# =============================================================================
+__all__ = [
+    "count_tokens",
+    "fast_tokenize",
+    "save_log",
+]
+
 
 def fast_tokenize(texts, max_length: int = 1024):
     """
@@ -23,14 +26,16 @@ def fast_tokenize(texts, max_length: int = 1024):
     Returns:
         Tensor: The tokenized output, padded and truncated to the longest sequence.
     """
+    tokenizer = get_tokenizer()
     return tokenizer(
         texts,
         add_special_tokens=True,
         padding="longest",
         truncation=True,
         max_length=max_length,
-        return_tensors="pt"
+        return_tensors="pt",
     )
+
 
 def count_tokens(text: str) -> int:
     """
@@ -42,19 +47,11 @@ def count_tokens(text: str) -> int:
     Returns:
         int: The number of tokens in the text.
     """
+    tokenizer = get_tokenizer()
     return len(tokenizer.encode(text))
 
-# =============================================================================
-# LOGGING
-# =============================================================================
 
-def save_log(log_text: str) -> None:
-    """
-    Appends a log entry to 'assistant_logs.txt' with a timestamp.
-
-    Args:
-        log_text (str): The message to log.
-    """
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with open("assistant_logs.txt", "a", encoding="utf-8") as log_file:
-        log_file.write(f"[{timestamp}] {log_text}\n")
+def __getattr__(name: str):
+    if name in __all__:
+        return locals()[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
