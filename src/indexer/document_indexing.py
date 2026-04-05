@@ -1,64 +1,60 @@
-from typing import Any, List
-from langchain_community.document_loaders import PyPDFLoader, TextLoader, DirectoryLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+"""
+Deprecated: This module is a compatibility shim that re-exports from bhodi_platform.
+
+All product logic has been moved to src/bhodi_platform/.
+This module will be removed in a future release.
+"""
+
+from typing import Any
+
+from bhodi_platform.indexing.application import DocumentIndexingService
+from bhodi_platform.indexing.settings import IndexingSettings
+
+__all__ = [
+    "load_and_index_documents_from_directory",
+    "load_and_index_single_file",
+]
 
 
-def load_and_index_documents_from_directory(directory_path: str, vectorstore: Any) -> int:
+def _build_indexing_service() -> DocumentIndexingService:
+    return DocumentIndexingService()
+
+
+def load_and_index_documents_from_directory(
+    directory_path: str, vectorstore: Any
+) -> int:
     """
     Loads documents from a directory, splits them and adds them to the vectorstore.
-    
+
     Args:
         directory_path (str): Path to the directory containing documents.
         vectorstore (Any): The vectorstore instance where documents will be added.
-    
+
     Returns:
         int: The number of document fragments indexed.
     """
-    loaders = [
-        DirectoryLoader(
-            directory_path,
-            glob="**/*.pdf",
-            loader_cls=PyPDFLoader
-        ),
-        DirectoryLoader(
-            directory_path,
-            glob="**/*.{txt,md,py,js,ts,cpp,java,go,rs}",
-            loader_cls=TextLoader
-        )
-    ]
-    
-    documents: List = []
-    for loader in loaders:
-        documents.extend(loader.load())
+    service = _build_indexing_service()
+    settings = IndexingSettings.from_environment()
+    return service.index_directory(directory_path, vectorstore, settings)
 
-
-    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    split_docs = splitter.split_documents(documents)
-    vectorstore.add_documents(split_docs)
-    
-    return len(split_docs)
 
 def load_and_index_single_file(file_path: str, vectorstore: Any) -> int:
     """
     Loads a single file, splits its contents and adds it to the vectorstore.
-    
+
     Args:
         file_path (str): Path to the file.
         vectorstore (Any): The vectorstore instance where the document will be added.
-    
+
     Returns:
         int: The number of document fragments indexed.
     """
-    # Select the loader based on file extension.
-    if file_path.lower().endswith(".pdf"):
-        loader = PyPDFLoader(file_path)
-    else:
-        loader = TextLoader(file_path)
+    service = _build_indexing_service()
+    settings = IndexingSettings.from_environment()
+    return service.index_file(file_path, vectorstore, settings)
 
 
-    documents = loader.load()
-    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    split_docs = splitter.split_documents(documents)
-    vectorstore.add_documents(split_docs)
-    
-    return len(split_docs)
+def __getattr__(name: str):
+    if name in __all__:
+        return locals()[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
