@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "setup_mode": "steady_state",
+  "repo_intent": "consumer",
+  "governance_mode": "delegated",
+  "interaction_mode": "standard",
+  "capability_profile": "app",
+  "platforms": [
+    "opencode"
+  ],
+  "bootstrap": {
+    "runtime": "",
+    "interface": "opentui",
+    "opentui_version": "0.1.81",
+    "generic_mode": "tool",
+    "provider": "claude-code",
+    "model": "",
+    "command": ""
+  },
+  "runtime_policy": "track_compiled",
+  "ownership": {
+    "default": "managed",
+    "rules": [
+      {
+        "path": "AGENTS.md",
+        "mode": "protected"
+      },
+      {
+        "path": "README.md",
+        "mode": "user-owned"
+      },
+      {
+        "path": "skills/**",
+        "mode": "managed"
+      }
+    ]
+  },
+  "exceptions": {
+    "ledger": ".aiwf/exceptions.json"
+  },
+  "request_contract": {
+    "schema": ".aiwf/schema/request.schema.json",
+    "request_file": ".aiwf/request.json"
+  },
+  "opencode": {
+    "agents": {
+      "mode": "curated",
+      "include": [],
+      "exclude": []
+    }
+  }
+}

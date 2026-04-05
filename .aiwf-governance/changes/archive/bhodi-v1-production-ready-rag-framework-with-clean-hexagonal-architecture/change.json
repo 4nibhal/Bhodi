@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "change_id": "bhodi-v1-production-ready-rag-framework-with-clean-hexagonal-architecture",
+  "title": "Bhodi v1: Production-ready RAG framework with clean hexagonal architecture",
+  "state": "archived",
+  "risk_tier": "T1-medium",
+  "objective": "Describe the intended user-visible or governance outcome.",
+  "scope": "List what this change touches and what it intentionally leaves out.",
+  "summary": "Explain the motivation, expected result, and why now.",
+  "acceptance_criteria": [
+    "Describe measurable completion criteria in plain English."
+  ],
+  "tests_expected": [
+    "List the local or CI checks that must pass before closure."
+  ],
+  "rollback_plan": "Describe the safest fallback if validation or rollout fails.",
+  "deploy_plan": "Describe rollout expectations, sequencing, or state if no deploy is needed.",
+  "threat_model": "Document security-sensitive assumptions when risk_tier is T2-high.",
+  "spec_ids": [
+    "bhodi-v1-production-ready-rag-framework-with-clean-hexagonal-architecture"
+  ],
+  "affected_paths": [
+    "replace/with/affected-paths/**"
+  ],
+  "ambiguities": [],
+  "archived_at": "2026-04-05T00:55:10.022261+00:00"
+}

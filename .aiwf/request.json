@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "request_id": "REQ-Bhodi-0001",
+  "objective": "Deliver reliable software with explicit operational governance.",
+  "scope": "Establish initial project structure and governance baseline.",
+  "risk_tier": "T1-medium",
+  "acceptance_criteria": [
+    "Project structure follows AIWF standards",
+    "AGENTS.md and config files are valid",
+    "Setup doctor passes without errors"
+  ],
+  "tests_expected": [
+    "Run 'python3 -m aiwf_cli doctor'",
+    "Run 'python scripts/aiwf/check_coherence.py' if available"
+  ],
+  "rollback_plan": "Revert to clean git state.",
+  "deploy_plan": "Commit initial structure to main branch.",
+  "threat_model": "Minimal risk during initial setup.",
+  "ambiguities": []
+}
