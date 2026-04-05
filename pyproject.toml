@@ -1,24 +1,114 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "bhodi-doc-analyzer"
+name = "bhodi"
 version = "0.1.0"
-requires-python = ">=3.10.0"
+description = "Production-ready RAG framework with clean hexagonal architecture."
+readme = "README.md"
+requires-python = ">=3.11"
+
+# Core dependencies - pinned to specific stable versions
 dependencies = [
-    "deptry>=0.23.0",
-    "langchain>=0.3.18",
-    "langchain-chroma>=0.2.2",
-    "langchain-community>=0.3.17",
-    "langchain-huggingface>=0.1.2",
-    "langgraph>=0.2.73",
-    "pylint>=3.3.4",
-    "pypdf>=5.3.0",
-    "radon>=6.0.1",
-    "textual>=2.0.4",
-    "vulture>=2.14",
+    # Web framework
+    "fastapi==0.115.12",
+    "uvicorn[standard]==0.34.0",
+
+    # Data validation
+    "pydantic==2.10.6",
+
+    # Document parsing
+    "pypdf==5.2.0",
+
+    # HTTP client
+    "httpx>=0.27.0,<0.28.0",
+    "aiohttp==3.11.11",
+
+    # ChromaDB for vector storage
+    "chromadb==0.5.23",
+
+    # OpenAI client
+    "openai==1.57.4",
+
+    # Evaluation
+    "numpy==2.2.2",
+]
+
+[project.optional-dependencies]
+# Local LLM support (Ollama, llama.cpp)
+local-llm = [
+    "llama-cpp-python==0.3.9",
+    "ollama>=0.3.0",
+]
+
+# Textual TUI
+tui = [
+    "textual==2.0.4",
+]
+
+# OpenTelemetry instrumentation
+telemetry = [
+    "opentelemetry-api==1.28.0",
+    "opentelemetry-sdk==1.28.0",
+    "opentelemetry-exporter-otlp==1.28.0",
+]
+
+# All optional dependencies
+all = [
+    "bhodi[local-llm,tui,telemetry]",
 ]
 
 [project.scripts]
-bhodi-index = "indexer.cli:main"
-bhodi = "bhodi_doc_analyzer.main:main_menu"
+# CLI entry points
+bhodi = "bhodi_platform.interfaces.cli.main:main"
+bhodi-api = "bhodi_platform.interfaces.api.server:main"
+
+[dependency-groups]
+# Development dependencies
+dev = [
+    "pytest==8.3.4",
+    "pytest-asyncio==0.25.2",
+    "pytest-cov==6.0.0",
+    "pylint==3.3.3",
+    "ruff==0.8.4",
+    "mypy==1.14.1",
+    "deptry==0.23.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "src"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["bhodi*", "bhodi_platform*"]
 
 [tool.setuptools.package-data]
-"bhodi_doc_analyzer" = ["static/*.css"]
+"bhodi_platform" = ["evaluation/fixtures/*.json"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "D", "UP", "YTT", "ANN", "S", "BLE", "FBT", "B", "A", "COM", "C4", "DTZ", "T10", "DJ", "EM", "EXE", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET", "SLF", "SIM", "TID", "TCH", "ARG", "PTH", "ERA", "PD", "PGH", "PL", "TRY", "RUF"]
+ignore = ["D100", "D101", "D102", "D103", "D104", "D105", "D107", "D203", "D212", "ANN101", "ANN102", "ANN401", "PLR0913", "PLR2004"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
