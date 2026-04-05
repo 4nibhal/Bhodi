@@ -1,0 +1,27 @@
+{
+  "name": "retrieval-grounding-baseline",
+  "retrieval_cases": [
+    {
+      "query_id": "corpus-policy",
+      "user_input": "What does the policy doc say about release validation?",
+      "expected_document_ids": ["policy-release-validation"],
+      "forbidden_origins": ["conversation"]
+    },
+    {
+      "query_id": "conversation-recall",
+      "user_input": "What did I ask in this conversation before?",
+      "expected_document_ids": ["conversation-turn-1"],
+      "forbidden_origins": ["corpus"]
+    }
+  ],
+  "grounding_cases": [
+    {
+      "query_id": "corpus-policy",
+      "required_sources": ["docs/policy.md"]
+    },
+    {
+      "query_id": "conversation-recall",
+      "required_sources": ["memory://conversation-turn-1"]
+    }
+  ]
+}
