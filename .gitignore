@@ -5,4 +5,22 @@ __pycache__/
 data_to_vector/
 assistant_logs.txt
 src/bhodi_doc_analyzer.egg-info/
-uv.lock
+
+# >>> aiwf-runtime:start
+# Managed by aiwf. Do not edit manually.
+.opencode/
+**/.aiwf/
+!/.aiwf/
+/.aiwf/*
+!/.aiwf/config.json
+!/.aiwf/request.json
+!/.aiwf/exceptions.json
+!/.aiwf/schema/
+!/.aiwf/schema/request.schema.json
+/.aiwf/audit/
+/.aiwf/session/
+/.aiwf/tmp/
+/.aiwf/metrics/
+/.aiwf/reports/
+/.aiwf/state.json
+# <<< aiwf-runtime:end
