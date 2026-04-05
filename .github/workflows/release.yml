@@ -1,0 +1,76 @@
+name: Release Artifacts
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    name: Build And Publish Artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.10.11"
+          enable-cache: true
+
+      - name: Install locked dependencies
+        run: uv sync --frozen
+
+      - name: Run release contract checks
+        run: uv run pytest
+
+      - name: Build release artifacts
+        run: |
+          rm -rf build dist
+          uv build
+
+      - name: Smoke test built wheel
+        shell: bash
+        run: |
+          smoke_dir="$RUNNER_TEMP/package-smoke"
+          uv venv "$smoke_dir" --python 3.11
+          uv pip install --python "$smoke_dir/bin/python" dist/*.whl
+          "$smoke_dir/bin/python" - <<'PY'
+          import importlib.metadata as metadata
+
+          expected = {"bhodi", "bhodi-api", "bhodi-index"}
+          discovered = {
+              entry_point.name
+              for entry_point in metadata.entry_points(group="console_scripts")
+          }
+          missing = expected - discovered
+          if missing:
+              raise SystemExit(f"Missing console scripts: {sorted(missing)}")
+
+          import bhodi_doc_analyzer.main
+          import bhodi_platform.interfaces.api.app
+          import indexer.cli
+          PY
+          "$smoke_dir/bin/bhodi-index" --help
+
+      - name: Publish artifacts to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/*.whl
+          generate_release_notes: true
