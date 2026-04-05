@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "reason": "reconcile apply acknowledged protected path edits",
+  "updated_by": "setup-reconcile",
+  "notes": [
+    "Protected paths acknowledged by reconcile apply: AGENTS.md"
+  ]
+}
