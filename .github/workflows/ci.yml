@@ -15,21 +15,23 @@ concurrency:
 
 jobs:
   test:
-    name: Release Contract
+    name: Test
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: true
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
         with:
           python-version: "3.11"
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@4db96194c378173c656ce18a155b14c36e27d981  # v6.0.0
         with:
           version: "0.10.11"
           enable-cache: true
@@ -54,6 +56,7 @@ jobs:
       - name: Smoke test built wheel
         shell: bash
         run: |
+          set -euo pipefail
           smoke_dir="$RUNNER_TEMP/package-smoke"
           uv venv "$smoke_dir" --python 3.11
           uv pip install --python "$smoke_dir/bin/python" dist/*.whl
@@ -71,8 +74,10 @@ jobs:
 
           import bhodi_platform.interfaces.api.app
           import indexer.cli
+          print("All checks passed")
           PY
           "$smoke_dir/bin/bhodi-index" --help
 
       - name: Show test summary
+        if: always()
         run: uv run pytest --tb=short -q
