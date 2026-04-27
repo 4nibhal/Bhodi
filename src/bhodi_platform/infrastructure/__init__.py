@@ -3,23 +3,13 @@ __all__ = [
     "LifecyclePort",
     "ManagedResource",
     "RuntimeRegistry",
-    "build_application",
-    "build_runtime",
 ]
 
 
 def __getattr__(name: str):
-    if name in {"build_application", "build_runtime", "InvalidDocumentPathError"}:
-        from bhodi_platform.infrastructure.composition import (
-            InvalidDocumentPathError,
-            build_application,
-            build_runtime,
-        )
+    if name == "InvalidDocumentPathError":
+        from bhodi_platform.indexing.errors import InvalidDocumentPathError
 
-        if name == "build_application":
-            return build_application
-        if name == "build_runtime":
-            return build_runtime
         return InvalidDocumentPathError
     if name == "LifecyclePort" or name == "ManagedResource":
         from bhodi_platform.infrastructure.lifecycle import (

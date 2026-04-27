@@ -14,7 +14,7 @@ async def query(request: QueryRequest) -> QueryResponse:
 
     Ask a question and get an answer with citations.
     """
-    from bhodi_platform.interfaces.api.server import get_bhodi_app
+    from bhodi_platform.interfaces.api.app import get_bhodi_app
 
     app = get_bhodi_app()
     try:
@@ -34,7 +34,7 @@ async def get_conversation(conversation_id: str) -> dict:
 
     Returns all turns in a conversation.
     """
-    from bhodi_platform.interfaces.api.server import get_bhodi_app
+    from bhodi_platform.interfaces.api.app import get_bhodi_app
     from bhodi_platform.domain.value_objects import ConversationId
 
     app = get_bhodi_app()

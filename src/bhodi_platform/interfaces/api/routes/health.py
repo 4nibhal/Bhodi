@@ -14,7 +14,7 @@ async def health() -> HealthStatus:
 
     Returns status without initializing any models.
     """
-    from bhodi_platform.interfaces.api.server import get_bhodi_app
+    from bhodi_platform.interfaces.api.app import get_bhodi_app
 
     app = get_bhodi_app()
     return await app.health_check()

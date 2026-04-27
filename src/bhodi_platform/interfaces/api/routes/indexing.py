@@ -22,7 +22,7 @@ async def index_document(request: IndexDocumentRequest) -> IndexDocumentResponse
 
     Upload and index a document for later querying.
     """
-    from bhodi_platform.interfaces.api.server import get_bhodi_app
+    from bhodi_platform.interfaces.api.app import get_bhodi_app
 
     app = get_bhodi_app()
     try:
@@ -44,7 +44,7 @@ async def delete_document(
 
     Removes all chunks associated with the document.
     """
-    from bhodi_platform.interfaces.api.server import get_bhodi_app
+    from bhodi_platform.interfaces.api.app import get_bhodi_app
     from bhodi_platform.domain.value_objects import DocumentId
 
     app = get_bhodi_app()
