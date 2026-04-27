@@ -41,6 +41,9 @@ htmlcov/
 # Jupyter
 .ipynb_checkpoints/
 
+# AIWF governance and runtime (development infrastructure)
+**/.aiwf-governance/
+
 # >>> aiwf-runtime:start
 # Managed by aiwf. Do not edit manually.
 .opencode/
