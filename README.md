@@ -6,12 +6,15 @@ Bhodi is a Python library for building retrieval-augmented generation (RAG) appl
 
 ## Features
 
-- **Clean Architecture**: Hexagonal architecture with domain, application, ports, and infrastructure layers
-- **Pluggable Adapters**: Swap embeddings (OpenAI, local), vector stores (Chroma), LLMs (OpenAI, Ollama)
-- **Multiple Interfaces**: REST API (FastAPI), CLI, or integrate as a library
+- **Clean Architecture**: Hexagonal architecture with domain, application, ports, infrastructure, and interfaces layers
+- **Pluggable Adapters**: Swap embeddings, vector stores, LLMs, chunkers, parsers, and conversation memory
+- **Multiple Interfaces**: REST API (FastAPI) on port 8000, CLI, or integrate as a library
 - **Type-Safe**: Full type hints with Pydantic models
 - **Async-First**: All operations are async
-- **Observable**: OpenTelemetry instrumentation built-in
+- **Observable**: OpenTelemetry spans built into adapters
+- **Health Check**: Real health check verifying embedding, vector_store, and llm connectivity
+- **Rate Limiting**: 100 requests/minute per IP on REST API
+- **Podman Deploy**: Ready-to-use Containerfile and podman-compose.yml
 
 ## Installation
 
@@ -37,6 +40,12 @@ uv sync
 uv run pytest  # Run tests
 ```
 
+## Entry Points
+
+- `bhodi` — CLI tool (`index`, `query`, `health`)
+- `bhodi-api` — REST API server (FastAPI, port 8000)
+- `bhodi-index` — Indexing worker / batch indexer
+
 ## Quick Start
 
 ### CLI
@@ -55,34 +64,38 @@ bhodi health
 ### Python API
 
 ```python
+import asyncio
 from bhodi_platform.application.config import BhodiConfig
 from bhodi_platform.application.facade import BhodiApplication
 from bhodi_platform.infrastructure.container import Container
 
-# Configure adapters
-config = BhodiConfig(
-    embedding={"provider": "openai", "model": "text-embedding-3-small"},
-    vector_store={"provider": "chroma", "persist_directory": "./data/chroma"},
-    chunker={"provider": "recursive", "chunk_size": 512},
-    llm={"provider": "openai", "model": "gpt-4o-mini"},
-)
+async def main():
+    # Configure adapters
+    config = BhodiConfig(
+        embedding={"provider": "openai", "model": "text-embedding-3-small"},
+        vector_store={"provider": "chroma", "persist_directory": "./data/chroma"},
+        chunker={"provider": "recursive", "chunk_size": 512},
+        llm={"provider": "openai", "model": "gpt-4o-mini"},
+    )
 
-# Build application
-container = Container(config)
-app = container.build()
+    # Build application
+    container = Container.from_config(config)
+    app = container.build()
 
-# Index documents
-document_id = await app.index_document({
-    "source": "./document.pdf",
-    "metadata": {"author": "Test"}
-})
+    # Index documents
+    document_id = await app.index_document({
+        "source": "./document.pdf",
+        "metadata": {"author": "Test"}
+    })
 
-# Query
-response = await app.query({
-    "question": "What is this about?",
-    "top_k": 5
-})
-print(response.answer_text)
+    # Query
+    response = await app.query({
+        "question": "What is this about?",
+        "top_k": 5
+    })
+    print(response.answer_text)
+
+asyncio.run(main())
 ```
 
 ### REST API
@@ -93,6 +106,7 @@ bhodi-api
 
 # In another terminal:
 curl http://localhost:8000/health
+
 curl -X POST http://localhost:8000/documents \
   -H "Content-Type: application/json" \
   -d '{"source": "./document.pdf"}'
@@ -101,6 +115,23 @@ curl -X POST http://localhost:8000/query \
   -H "Content-Type: application/json" \
   -d '{"question": "What is this about?"}'
 ```
+
+## Deploy with Podman
+
+Bhodi includes a `Containerfile` and `podman-compose.yml` for containerized deployment:
+
+```bash
+# Build and run with Podman Compose
+podman-compose up --build
+
+# Or manually with Podman
+podman build -f Containerfile -t bhodi .
+podman run -p 8000:8000 --env-file .env bhodi
+```
+
+## Rate Limiting
+
+The REST API enforces **100 requests per minute per IP**. Exceeding this limit returns HTTP 429 (Too Many Requests). Rate limits apply to all endpoints except `/health`.
 
 ## Architecture
 
@@ -118,19 +149,21 @@ bhodi_platform/
 │   ├── embedding.py  # EmbeddingPort
 │   ├── vector_store.py  # VectorStorePort
 │   ├── chunker.py   # ChunkerPort
+│   ├── parser.py    # ParserPort
 │   ├── llm.py       # LLMPort
 │   └── conversation_memory.py  # ConversationMemoryPort
 ├── infrastructure/  # Concrete adapters
-│   ├── container.py # Dependency injection
-│   ├── telemetry.py # OpenTelemetry
-│   ├── embedding/   # OpenAI, Local, Mock
-│   ├── vector_store/ # Chroma, InMemory
-│   ├── chunker/     # FixedSize, Recursive
-│   ├── llm/         # OpenAI, Ollama, Mock
-│   └── conversation_memory/  # Volatile, Persistent
+│   ├── container.py # Dependency injection (Container.from_config + build)
+│   ├── telemetry.py # OpenTelemetry spans
+│   ├── embedding/   # OpenAI (text-embedding-3-small), Mock
+│   ├── vector_store/ # Chroma (persistent), InMemory (ephemeral)
+│   ├── chunker/     # FixedSize, Recursive (character splitting)
+│   ├── parser/      # PyPDF, Mock
+│   ├── llm/         # OpenAI (gpt-4o-mini), Ollama (llama3.2), Mock
+│   └── conversation_memory/  # Volatile (in-memory), Mock
 └── interfaces/     # Transport adapters
-    ├── api/         # FastAPI server
-    └── cli/         # CLI commands
+    ├── api/         # FastAPI server (port 8000)
+    └── cli/         # CLI commands (bhodi)
 ```
 
 ## Configuration
@@ -144,11 +177,13 @@ from bhodi_platform.application.config import (
     VectorStoreConfig,
     LLMConfig,
     ChunkerConfig,
+    ConversationConfig,
+    ParserConfig,
 )
 
 config = BhodiConfig(
     embedding=EmbeddingConfig(
-        provider="openai",  # or "mock", "local"
+        provider="openai",  # or "mock"
         model="text-embedding-3-small",
         dimensions=1536,
     ),
@@ -167,8 +202,11 @@ config = BhodiConfig(
         model="gpt-4o-mini",
         temperature=0.7,
     ),
+    parser=ParserConfig(
+        provider="pypdf",  # or "mock"
+    ),
     conversation=ConversationConfig(
-        provider="volatile",  # or "persistent"
+        provider="volatile",  # or "mock"
         max_history=50,
     ),
 )
@@ -190,23 +228,22 @@ export OLLAMA_BASE_URL="http://localhost:11434"
 
 | Provider | Model | Notes |
 |----------|-------|-------|
-| `openai` | text-embedding-3-small, text-embedding-3-large | Requires OPENAI_API_KEY |
-| `local` | sentence-transformers/* | Uses local models |
+| `openai` | text-embedding-3-small | Requires OPENAI_API_KEY |
 | `mock` | - | For testing |
 
 ### Vector Stores
 
 | Provider | Notes |
 |----------|-------|
-| `chroma` | Persistent storage |
+| `chroma` | Persistent storage (on-disk) |
 | `in_memory` | Ephemeral, for testing |
 
 ### LLMs
 
 | Provider | Model | Notes |
 |----------|-------|-------|
-| `openai` | gpt-4o, gpt-4o-mini | Requires OPENAI_API_KEY |
-| `ollama` | llama3.2, mistral, etc. | Local, requires Ollama server |
+| `openai` | gpt-4o-mini | Requires OPENAI_API_KEY |
+| `ollama` | llama3.2 | Local, requires Ollama server |
 | `mock` | - | For testing |
 
 ### Chunkers
@@ -216,17 +253,30 @@ export OLLAMA_BASE_URL="http://localhost:11434"
 | `fixed_size` | Fixed character/byte chunks |
 | `recursive` | Recursive character splitting |
 
+### Parsers
+
+| Provider | Notes |
+|----------|-------|
+| `pypdf` | Extracts text from PDF files |
+| `mock` | For testing |
+
+### Conversation Memory
+
+| Provider | Notes |
+|----------|-------|
+| `volatile` | In-memory, per-process |
+| `mock` | For testing |
+
 ## API Reference
 
 ### Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/health` | Health check |
+| GET | `/health` | Health check (verifies embedding, vector_store, llm) |
 | POST | `/documents` | Index a document |
 | DELETE | `/documents/{id}` | Delete a document |
 | POST | `/query` | Query the index |
-| GET | `/conversations/{id}` | Get conversation history |
 
 ### Request/Response Models
 
@@ -283,6 +333,15 @@ uv run pytest tests/contract/
 uv run pytest tests/e2e/
 uv run pytest tests/integration/
 ```
+
+## Roadmap
+
+Features planned but **not yet implemented**:
+
+- Persistent conversation memory (currently only in-memory volatile)
+- Authentication / API key management
+- Semantic chunker
+- Anthropic LLM adapter
 
 ## License
 
