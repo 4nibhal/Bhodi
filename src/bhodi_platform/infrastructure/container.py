@@ -103,12 +103,18 @@ class Container:
         from bhodi_platform.infrastructure.chunker.fixed_size import (
             FixedSizeChunkerAdapter,
         )
+        from bhodi_platform.infrastructure.chunker.recursive import (
+            RecursiveChunkerAdapter,
+        )
         from bhodi_platform.ports.chunker import ChunkerPort
 
         provider = self._config.chunker.provider.lower()
 
         if provider == "fixed_size":
             return FixedSizeChunkerAdapter(self._config.chunker)
+
+        if provider == "recursive":
+            return RecursiveChunkerAdapter(self._config.chunker)
 
         # Default to fixed_size if provider not recognized
         return FixedSizeChunkerAdapter(self._config.chunker)
