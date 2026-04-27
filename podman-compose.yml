@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: bhodi-chroma
+    ports:
+      - "8080:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=FALSE
+    restart: unless-stopped
+
+  bhodi-api:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: bhodi-api
+    ports:
+      - "8000:8000"
+    depends_on:
+      - chroma
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - BHODI_API_HOST=0.0.0.0
+      - BHODI_API_PORT=8000
+    volumes:
+      # Persist ChromaDB local data and any uploaded documents
+      - ./data:/app/data
+    restart: unless-stopped
+
+volumes:
+  chroma-data:
