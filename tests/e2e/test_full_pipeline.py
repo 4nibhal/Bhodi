@@ -108,19 +108,6 @@ async def test_query(app):
 
     # Index first
     await app.index_document(IndexDocumentRequest(source="test.pdf"))
-    response = await app.index_document(request)
-
-    assert response.document_id is not None
-    assert response.chunk_count >= 1
-
-
-@pytest.mark.asyncio
-async def test_query(app):
-    """Query the index after indexing a document."""
-    from bhodi_platform.application.models import IndexDocumentRequest, QueryRequest
-
-    # Index first
-    await app.index_document(IndexDocumentRequest(source="test.pdf"))
 
     # Then query
     request = QueryRequest(question="What is this about?", top_k=3)

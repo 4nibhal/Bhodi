@@ -13,6 +13,9 @@ src/*.egg-info/
 # Environment and runtime artifacts
 .python-version
 .rules
+.venv/
+.env*
+.coverage
 
 # >>> aiwf-runtime:start
 # Managed by aiwf. Do not edit manually.
