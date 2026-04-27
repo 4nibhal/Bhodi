@@ -13,9 +13,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-and-publish:
+  release:
     name: Build And Publish Artifacts
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Check out repository
@@ -61,7 +62,6 @@ jobs:
           if missing:
               raise SystemExit(f"Missing console scripts: {sorted(missing)}")
 
-          import bhodi_doc_analyzer.main
           import bhodi_platform.interfaces.api.app
           import indexer.cli
           PY

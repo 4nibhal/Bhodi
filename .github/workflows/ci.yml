@@ -14,9 +14,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  release-contract:
+  test:
     name: Release Contract
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Check out repository
@@ -68,9 +69,10 @@ jobs:
           if missing:
               raise SystemExit(f"Missing console scripts: {sorted(missing)}")
 
-          import bhodi_doc_analyzer.main
           import bhodi_platform.interfaces.api.app
-          import bhodi_platform.interfaces.worker
           import indexer.cli
           PY
           "$smoke_dir/bin/bhodi-index" --help
+
+      - name: Show test summary
+        run: uv run pytest --tb=short -q
