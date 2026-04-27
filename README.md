@@ -15,29 +15,52 @@ Bhodi indexes documents and answers questions using retrieval-augmented generati
 ## Try it in 30 seconds (no API keys)
 
 ```bash
-pip install bhodi
-bhodi index ./document.pdf --provider mock
-bhodi query "What is this document about?" --provider mock
+uv tool install bhodi
+
+export BHODI_EMBEDDING_PROVIDER=mock
+export BHODI_LLM_PROVIDER=mock
+export BHODI_VECTOR_STORE_PROVIDER=in_memory
+
+bhodi index ./document.pdf
+bhodi query "What is this document about?"
 ```
 
 Uses mock adapters. No network calls. No OpenAI account required. Good for exploring the CLI and local testing.
+
+> Or with **pipx**: `pipx install bhodi`
 
 ---
 
 ## Installation
 
 ```bash
-pip install bhodi
+uv tool install bhodi
 ```
 
-Or with extras:
+Or with **pipx**:
 
 ```bash
-pip install bhodi[local-llm]  # Ollama support
-pip install bhodi[tui]        # Textual TUI
-pip install bhodi[telemetry]  # OpenTelemetry
-pip install bhodi[all]        # All extras
+pipx install bhodi
 ```
+
+With extras:
+
+```bash
+uv tool install bhodi --with bhodi[local-llm]  # Ollama support
+uv tool install bhodi --with bhodi[tui]        # Textual TUI
+uv tool install bhodi --with bhodi[telemetry]  # OpenTelemetry
+uv tool install bhodi --with bhodi[all]        # All extras
+```
+
+Or with pipx:
+
+```bash
+pipx install bhodi
+pipx inject bhodi bhodi[local-llm]
+```
+
+> **Why uv/pipx instead of pip?**
+> `uv tool install` and `pipx install` install Bhodi in an isolated environment, avoiding dependency conflicts with your system Python or other projects. This is the recommended way to install CLI tools.
 
 ### Development
 
@@ -228,7 +251,7 @@ uv build                   # Wheel and sdist
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
-| `OPENAI_API_KEY not set` | Missing env var | `export OPENAI_API_KEY="sk-..."` or use `--provider mock` |
+| `OPENAI_API_KEY not set` | Missing env var | `export OPENAI_API_KEY="sk-..."` or set providers to `mock` via env vars |
 | `Connection refused` on Chroma | Chroma not running | Start Chroma or use `provider="in_memory"` |
 | `Rate limit exceeded` | 100 req/min hit | Wait 60 seconds or implement client-side backoff |
 | PDF not parsing | Corrupted or scanned PDF | Ensure text-based PDF; scanned images need OCR (not supported) |
