@@ -6,9 +6,11 @@ Creates and configures the Bhodi API server.
 
 from __future__ import annotations
 
+import asyncio
+import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 from bhodi_platform.application.config import BhodiConfig
@@ -18,6 +20,36 @@ from bhodi_platform.infrastructure.container import Container
 
 # Module-level state
 _state: dict = {"app": None, "bhodi_app": None}
+
+# Rate limiting state
+_rate_limit_requests: dict[str, list[float]] = {}
+_rate_limit_lock = asyncio.Lock()
+RATE_LIMIT_MAX = 100
+RATE_LIMIT_WINDOW = 60  # seconds
+
+
+async def _rate_limit_middleware(request: Request, call_next):
+    """Simple in-memory rate limiter. Skip /health endpoint."""
+    if request.url.path == "/health":
+        return await call_next(request)
+
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+
+    async with _rate_limit_lock:
+        timestamps = _rate_limit_requests.get(client_ip, [])
+        # Clean old timestamps
+        timestamps = [ts for ts in timestamps if now - ts < RATE_LIMIT_WINDOW]
+        if len(timestamps) >= RATE_LIMIT_MAX:
+            _rate_limit_requests[client_ip] = timestamps
+            return JSONResponse(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                content={"detail": "Rate limit exceeded. Try again later."},
+            )
+        timestamps.append(now)
+        _rate_limit_requests[client_ip] = timestamps
+
+    return await call_next(request)
 
 
 def create_app(config: BhodiConfig | None = None) -> FastAPI:
@@ -46,6 +78,9 @@ def create_app(config: BhodiConfig | None = None) -> FastAPI:
         version="1.0.0",
         lifespan=lifespan,
     )
+
+    # Register middleware
+    app.middleware("http")(_rate_limit_middleware)
 
     # Include routers
     from bhodi_platform.interfaces.api.routes import health, indexing, query

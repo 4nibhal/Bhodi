@@ -43,3 +43,4 @@ class QueryResponse(BaseModel):
 class HealthStatus(BaseModel):
     status: str
     version: str
+    services: dict[str, bool] = Field(default_factory=dict)

@@ -82,7 +82,35 @@ class BhodiApplication:
         )
 
     async def health_check(self) -> HealthStatus:
-        return HealthStatus(status="healthy", version="1.0.0")
+        services: dict[str, bool] = {}
+
+        # Check embedding adapter
+        try:
+            await self._embedding.embed_query("health")
+            services["embedding"] = True
+        except Exception:
+            services["embedding"] = False
+
+        # Check vector store adapter
+        try:
+            await self._vector_store.persist()
+            services["vector_store"] = True
+        except Exception:
+            services["vector_store"] = False
+
+        # Check LLM adapter (lightweight, optional)
+        try:
+            await self._llm.generate("health check", max_tokens=1)
+            services["llm"] = True
+        except Exception:
+            services["llm"] = False
+
+        status = "healthy" if all(services.values()) else "degraded"
+        return HealthStatus(
+            status=status,
+            version="1.0.0",
+            services=services,
+        )
 
     async def delete_document(self, document_id) -> None:
         """Delete a document and all its chunks."""
