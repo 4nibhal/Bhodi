@@ -17,6 +17,30 @@ src/*.egg-info/
 .env*
 .coverage
 
+# IDE and OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Build artifacts
+dist/
+build/
+htmlcov/
+
+# Logs
+*.log
+
+# Type checking cache
+.mypy_cache/
+
+# pytest cache
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
 # >>> aiwf-runtime:start
 # Managed by aiwf. Do not edit manually.
 .opencode/

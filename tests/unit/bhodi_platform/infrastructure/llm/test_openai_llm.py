@@ -19,7 +19,7 @@ class TestOpenAILLMAdapter:
         return LLMConfig(
             provider="openai",
             model="gpt-4o-mini",
-            extra={"api_key": "sk-test-dummy"},
+            extra={"api_key": "FAKE_API_KEY_FOR_TESTS"},
         )
 
     @pytest.fixture
