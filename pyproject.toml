@@ -44,7 +44,7 @@ local-llm = [
 
 # Textual TUI
 tui = [
-    "textual==2.0.4",
+    "textual==8.2.4",
 ]
 
 # OpenTelemetry instrumentation
