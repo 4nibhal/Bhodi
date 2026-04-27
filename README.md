@@ -1,20 +1,28 @@
 # Bhodi
 
-**Production-ready RAG framework with clean hexagonal architecture.**
+[![CI](https://github.com/4nibhal/Bhodi/actions/workflows/ci.yml/badge.svg)](https://github.com/4nibhal/Bhodi/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Bhodi is a Python library for building retrieval-augmented generation (RAG) applications. It provides a clean separation between domain logic, infrastructure adapters, and transport interfaces.
+**A backend RAG engine for Python developers.**
 
-## Features
+Bhodi indexes documents and answers questions using retrieval-augmented generation (RAG). It is built as a modular, hexagonal backend that you can run as a library, a CLI, or a REST API.
 
-- **Clean Architecture**: Hexagonal architecture with domain, application, ports, infrastructure, and interfaces layers
-- **Pluggable Adapters**: Swap embeddings, vector stores, LLMs, chunkers, parsers, and conversation memory
-- **Multiple Interfaces**: REST API (FastAPI) on port 8000, CLI, or integrate as a library
-- **Type-Safe**: Full type hints with Pydantic models
-- **Async-First**: All operations are async
-- **Observable**: OpenTelemetry spans built into adapters
-- **Health Check**: Real health check verifying embedding, vector_store, and llm connectivity
-- **Rate Limiting**: 100 requests/minute per IP on REST API
-- **Podman Deploy**: Ready-to-use Containerfile and podman-compose.yml
+> **Status:** Beta. Core RAG pipeline is solid. Auth, persistent memory, and managed SaaS features are not implemented yet. See [Roadmap](#roadmap).
+
+---
+
+## Try it in 30 seconds (no API keys)
+
+```bash
+pip install bhodi
+bhodi index ./document.pdf --provider mock
+bhodi query "What is this document about?" --provider mock
+```
+
+Uses mock adapters. No network calls. No OpenAI account required. Good for exploring the CLI and local testing.
+
+---
 
 ## Installation
 
@@ -22,39 +30,37 @@ Bhodi is a Python library for building retrieval-augmented generation (RAG) appl
 pip install bhodi
 ```
 
-Or install with extras:
+Or with extras:
 
 ```bash
 pip install bhodi[local-llm]  # Ollama support
 pip install bhodi[tui]        # Textual TUI
-pip install bhodi[telemetry]   # OpenTelemetry
-pip install bhodi[all]         # All extras
+pip install bhodi[telemetry]  # OpenTelemetry
+pip install bhodi[all]        # All extras
 ```
 
 ### Development
 
 ```bash
-git clone https://github.com/your-org/bhodi
+git clone https://github.com/4nibhal/bhodi.git
 cd bhodi
 uv sync
-uv run pytest  # Run tests
+uv run pytest
 ```
 
-## Entry Points
-
-- `bhodi` — CLI tool (`index`, `query`, `health`)
-- `bhodi-api` — REST API server (FastAPI, port 8000)
-- `bhodi-index` — Indexing worker / batch indexer
+---
 
 ## Quick Start
 
-### CLI
+### CLI with OpenAI
 
 ```bash
+export OPENAI_API_KEY="sk-..."
+
 # Index a document
 bhodi index ./document.pdf
 
-# Query the index
+# Query
 bhodi query "What is this document about?"
 
 # Health check
@@ -68,9 +74,9 @@ import asyncio
 from bhodi_platform.application.config import BhodiConfig
 from bhodi_platform.application.facade import BhodiApplication
 from bhodi_platform.infrastructure.container import Container
+from bhodi_platform.application.models import IndexDocumentRequest, QueryRequest
 
 async def main():
-    # Configure adapters
     config = BhodiConfig(
         embedding={"provider": "openai", "model": "text-embedding-3-small"},
         vector_store={"provider": "chroma", "persist_directory": "./data/chroma"},
@@ -78,22 +84,18 @@ async def main():
         llm={"provider": "openai", "model": "gpt-4o-mini"},
     )
 
-    # Build application
     container = Container.from_config(config)
     app = container.build()
 
-    # Index documents
-    document_id = await app.index_document({
-        "source": "./document.pdf",
-        "metadata": {"author": "Test"}
-    })
+    response = await app.index_document(
+        IndexDocumentRequest(source="./document.pdf", metadata={"author": "Test"})
+    )
+    print(f"Indexed {response.chunk_count} chunks")
 
-    # Query
-    response = await app.query({
-        "question": "What is this about?",
-        "top_k": 5
-    })
-    print(response.answer_text)
+    answer = await app.query(
+        QueryRequest(question="What is this about?", top_k=5)
+    )
+    print(answer.answer_text)
 
 asyncio.run(main())
 ```
@@ -102,6 +104,7 @@ asyncio.run(main())
 
 ```bash
 # Start server
+export OPENAI_API_KEY="sk-..."
 bhodi-api
 
 # In another terminal:
@@ -116,59 +119,31 @@ curl -X POST http://localhost:8000/query \
   -d '{"question": "What is this about?"}'
 ```
 
+The API enforces **100 requests/minute per IP** (HTTP 429 when exceeded). `/health` is excluded.
+
+---
+
 ## Deploy with Podman
 
-Bhodi includes a `Containerfile` and `podman-compose.yml` for containerized deployment:
+```bash
+# Requires OPENAI_API_KEY in environment or .env
+podman-compose up --build
+```
+
+Or manually:
 
 ```bash
-# Build and run with Podman Compose
-podman-compose up --build
-
-# Or manually with Podman
 podman build -f Containerfile -t bhodi .
-podman run -p 8000:8000 --env-file .env bhodi
+podman run -p 8000:8000 -e OPENAI_API_KEY="sk-..." bhodi
 ```
 
-## Rate Limiting
+> **Warning:** The API has **no authentication**. Only deploy behind a VPN, reverse proxy with auth, or similar. Do not expose directly to the internet.
 
-The REST API enforces **100 requests per minute per IP**. Exceeding this limit returns HTTP 429 (Too Many Requests). Rate limits apply to all endpoints except `/health`.
-
-## Architecture
-
-```
-bhodi_platform/
-├── domain/           # Pure business logic
-│   ├── entities.py   # Document, Chunk, Query, Answer
-│   ├── value_objects.py  # DocumentId, ChunkId, Citation
-│   └── exceptions.py # Domain exceptions
-├── application/     # Use cases & orchestration
-│   ├── config.py     # Configuration schema
-│   ├── facade.py     # BhodiApplication
-│   └── models.py     # Request/Response models
-├── ports/           # Abstract interfaces (Protocols)
-│   ├── embedding.py  # EmbeddingPort
-│   ├── vector_store.py  # VectorStorePort
-│   ├── chunker.py   # ChunkerPort
-│   ├── parser.py    # ParserPort
-│   ├── llm.py       # LLMPort
-│   └── conversation_memory.py  # ConversationMemoryPort
-├── infrastructure/  # Concrete adapters
-│   ├── container.py # Dependency injection (Container.from_config + build)
-│   ├── telemetry.py # OpenTelemetry spans
-│   ├── embedding/   # OpenAI (text-embedding-3-small), Mock
-│   ├── vector_store/ # Chroma (persistent), InMemory (ephemeral)
-│   ├── chunker/     # FixedSize, Recursive (character splitting)
-│   ├── parser/      # PyPDF, Mock
-│   ├── llm/         # OpenAI (gpt-4o-mini), Ollama (llama3.2), Mock
-│   └── conversation_memory/  # Volatile (in-memory), Mock
-└── interfaces/     # Transport adapters
-    ├── api/         # FastAPI server (port 8000)
-    └── cli/         # CLI commands (bhodi)
-```
+---
 
 ## Configuration
 
-All configuration is done via `BhodiConfig`:
+All behavior is driven through `BhodiConfig`:
 
 ```python
 from bhodi_platform.application.config import (
@@ -177,182 +152,102 @@ from bhodi_platform.application.config import (
     VectorStoreConfig,
     LLMConfig,
     ChunkerConfig,
-    ConversationConfig,
     ParserConfig,
+    ConversationConfig,
 )
 
 config = BhodiConfig(
-    embedding=EmbeddingConfig(
-        provider="openai",  # or "mock"
-        model="text-embedding-3-small",
-        dimensions=1536,
-    ),
+    embedding=EmbeddingConfig(provider="openai", model="text-embedding-3-small"),
     vector_store=VectorStoreConfig(
-        provider="chroma",  # or "in_memory"
+        provider="chroma",
         persist_directory="./data/chroma",
         collection_name="bhodi",
     ),
-    chunker=ChunkerConfig(
-        provider="recursive",  # or "fixed_size"
-        chunk_size=512,
-        overlap=64,
-    ),
-    llm=LLMConfig(
-        provider="openai",  # or "ollama", "mock"
-        model="gpt-4o-mini",
-        temperature=0.7,
-    ),
-    parser=ParserConfig(
-        provider="pypdf",  # or "mock"
-    ),
-    conversation=ConversationConfig(
-        provider="volatile",  # or "mock"
-        max_history=50,
-    ),
+    chunker=ChunkerConfig(provider="recursive", chunk_size=512, overlap=64),
+    llm=LLMConfig(provider="openai", model="gpt-4o-mini", temperature=0.7),
+    parser=ParserConfig(provider="pypdf"),
+    conversation=ConversationConfig(provider="volatile", max_history=50),
 )
 ```
 
 ### Environment Variables
 
 ```bash
-# OpenAI (required for OpenAI adapters)
-export OPENAI_API_KEY="sk-..."
-
-# Ollama (for local LLM)
-export OLLAMA_BASE_URL="http://localhost:11434"
+export OPENAI_API_KEY="sk-..."        # Required for OpenAI adapters
+export OLLAMA_BASE_URL="http://localhost:11434"  # Optional, for local LLM
 ```
+
+---
 
 ## Available Adapters
 
-### Embeddings
+| Component | Providers | Notes |
+|-----------|-----------|-------|
+| **Embeddings** | `openai` (text-embedding-3-small), `mock` | OpenAI requires API key |
+| **Vector Store** | `chroma` (persistent), `in_memory` | Chroma stores on disk |
+| **LLM** | `openai` (gpt-4o-mini), `ollama` (llama3.2), `mock` | Ollama needs local server |
+| **Chunker** | `fixed_size`, `recursive` | Recursive uses character separators |
+| **Parser** | `pypdf`, `mock` | PDF text extraction |
+| **Conversation Memory** | `volatile`, `mock` | In-memory only; lost on restart |
 
-| Provider | Model | Notes |
-|----------|-------|-------|
-| `openai` | text-embedding-3-small | Requires OPENAI_API_KEY |
-| `mock` | - | For testing |
+Swap adapters by changing the `provider` field in config. No code changes needed.
 
-### Vector Stores
+---
 
-| Provider | Notes |
-|----------|-------|
-| `chroma` | Persistent storage (on-disk) |
-| `in_memory` | Ephemeral, for testing |
+## Architecture
 
-### LLMs
+Hexagonal separation:
 
-| Provider | Model | Notes |
-|----------|-------|-------|
-| `openai` | gpt-4o-mini | Requires OPENAI_API_KEY |
-| `ollama` | llama3.2 | Local, requires Ollama server |
-| `mock` | - | For testing |
-
-### Chunkers
-
-| Provider | Notes |
-|----------|-------|
-| `fixed_size` | Fixed character/byte chunks |
-| `recursive` | Recursive character splitting |
-
-### Parsers
-
-| Provider | Notes |
-|----------|-------|
-| `pypdf` | Extracts text from PDF files |
-| `mock` | For testing |
-
-### Conversation Memory
-
-| Provider | Notes |
-|----------|-------|
-| `volatile` | In-memory, per-process |
-| `mock` | For testing |
-
-## API Reference
-
-### Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Health check (verifies embedding, vector_store, llm) |
-| POST | `/documents` | Index a document |
-| DELETE | `/documents/{id}` | Delete a document |
-| POST | `/query` | Query the index |
-
-### Request/Response Models
-
-```python
-# IndexDocumentRequest
-{
-    "source": "path/to/document.pdf",
-    "metadata": {"key": "value"},
-    "chunk_size": 512,
-    "overlap": 64
-}
-
-# IndexDocumentResponse
-{
-    "document_id": "uuid",
-    "chunk_count": 42
-}
-
-# QueryRequest
-{
-    "question": "What is this about?",
-    "conversation_id": "optional-session-id",
-    "top_k": 5,
-    "temperature": 0.7
-}
-
-# QueryResponse
-{
-    "answer_text": "The document is about...",
-    "citations": [
-        {
-            "chunk_id": "doc-uuid:0",
-            "text": "First part of source...",
-            "source_document": "document.pdf",
-            "page": 1
-        }
-    ],
-    "conversation_id": "session-id"
-}
+```
+bhodi_platform/
+├── domain/          # Entities, value objects, exceptions
+├── application/     # Config, facade, use cases
+├── ports/           # Protocols (EmbeddingPort, LLMPort, etc.)
+├── infrastructure/  # Concrete adapters (OpenAI, Chroma, PyPDF)
+└── interfaces/      # FastAPI, CLI
 ```
 
-## Testing
+- **No import-time side effects.** Adapters initialize lazily.
+- **Composable.** Use `Container.from_config()` to wire any combination.
+- **Testable.** Mock adapters for deterministic tests.
+
+---
+
+## Development
 
 ```bash
-# Run all tests
-uv run pytest
-
-# Run with coverage
-uv run pytest --cov=bhodi_platform --cov-report=html
-
-# Run specific test suites
-uv run pytest tests/unit/
-uv run pytest tests/contract/
-uv run pytest tests/e2e/
-uv run pytest tests/integration/
+uv run pytest              # Full suite (184 tests)
+uv run pytest tests/evals  # Quality evals
+uv run pytest --cov        # Coverage report
+uv build                   # Wheel and sdist
 ```
+
+---
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| `OPENAI_API_KEY not set` | Missing env var | `export OPENAI_API_KEY="sk-..."` or use `--provider mock` |
+| `Connection refused` on Chroma | Chroma not running | Start Chroma or use `provider="in_memory"` |
+| `Rate limit exceeded` | 100 req/min hit | Wait 60 seconds or implement client-side backoff |
+| PDF not parsing | Corrupted or scanned PDF | Ensure text-based PDF; scanned images need OCR (not supported) |
+| Ollama timeout | Model loading slowly | Increase timeout or pre-pull model: `ollama pull llama3.2` |
+
+---
 
 ## Roadmap
 
-Features planned but **not yet implemented**:
+Not implemented yet. Planned for future releases:
 
-- Persistent conversation memory (currently only in-memory volatile)
-- Authentication / API key management
-- Semantic chunker
-- Anthropic LLM adapter
+- **Authentication / API key management** — Required for any internet-facing deployment
+- **Persistent conversation memory** — SQLite or PostgreSQL instead of in-memory
+- **Semantic chunker** — Chunking based on meaning, not just characters
+- **Anthropic LLM adapter** — Claude support
+- **Structured logging and metrics** — Operational observability
+
+---
 
 ## License
 
-Apache 2.0 - see LICENSE file for details.
-
-<!-- AIWF-GENERATED:START -->
-- AIWF generated summary:
-  - repo_intent: `consumer`
-  - setup_mode: `steady_state`
-  - governance_mode: `delegated`
-  - interaction_mode: `standard`
-  - runtime_policy: `track_compiled`
-  - platforms: `opencode`
-<!-- AIWF-GENERATED:END -->
+MIT — See [LICENSE](LICENSE).
