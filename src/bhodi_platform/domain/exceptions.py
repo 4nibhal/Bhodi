@@ -66,3 +66,12 @@ class InvalidDocumentError(BhodiDomainError):
     def __init__(self, reason: str) -> None:
         self.reason = reason
         super().__init__(f"Invalid document: {reason}")
+
+
+class LLMError(BhodiDomainError):
+    """Raised when LLM generation fails."""
+
+    def __init__(self, operation: str, reason: str) -> None:
+        self.operation = operation
+        self.reason = reason
+        super().__init__(f"LLM {operation} failed: {reason}")

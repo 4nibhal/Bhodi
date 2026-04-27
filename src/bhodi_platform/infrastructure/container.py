@@ -150,6 +150,11 @@ class Container:
 
             return OllamaLLMAdapter(self._config.llm)
 
+        if provider == "openai":
+            from bhodi_platform.infrastructure.llm.openai import OpenAILLMAdapter
+
+            return OpenAILLMAdapter(self._config.llm)
+
         # Default to mock if provider not recognized
         return MockLLMAdapter(self._config.llm)
 
