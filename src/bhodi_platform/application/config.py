@@ -7,6 +7,7 @@ No hardcoded values for models, temperatures, chunk sizes, or paths.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -148,20 +149,34 @@ class BhodiConfig(BaseModel):
     """
 
     parser: DocumentParserConfig = Field(
-        default_factory=lambda: DocumentParserConfig(provider="pypdf")
+        default_factory=lambda: DocumentParserConfig(
+            provider=os.getenv("BHODI_PARSER_PROVIDER", "pypdf")
+        )
     )
     chunker: ChunkerConfig = Field(
-        default_factory=lambda: ChunkerConfig(provider="recursive")
+        default_factory=lambda: ChunkerConfig(
+            provider=os.getenv("BHODI_CHUNKER_PROVIDER", "recursive")
+        )
     )
     embedding: EmbeddingConfig = Field(
-        default_factory=lambda: EmbeddingConfig(provider="openai")
+        default_factory=lambda: EmbeddingConfig(
+            provider=os.getenv("BHODI_EMBEDDING_PROVIDER", "openai")
+        )
     )
     vector_store: VectorStoreConfig = Field(
-        default_factory=lambda: VectorStoreConfig(provider="chroma")
+        default_factory=lambda: VectorStoreConfig(
+            provider=os.getenv("BHODI_VECTOR_STORE_PROVIDER", "chroma")
+        )
     )
-    llm: LLMConfig = Field(default_factory=lambda: LLMConfig(provider="openai"))
+    llm: LLMConfig = Field(
+        default_factory=lambda: LLMConfig(
+            provider=os.getenv("BHODI_LLM_PROVIDER", "openai")
+        )
+    )
     conversation: ConversationConfig = Field(
-        default_factory=lambda: ConversationConfig(provider="volatile")
+        default_factory=lambda: ConversationConfig(
+            provider=os.getenv("BHODI_CONVERSATION_PROVIDER", "volatile")
+        )
     )
     telemetry: TelemetryConfig = Field(default_factory=TelemetryConfig)
 

@@ -43,6 +43,17 @@ class PyPDFDocumentParserAdapter:
             metadata["source"] = str(path.resolve())
             metadata["filename"] = path.name
 
+            # Handle plain text files directly
+            if path.suffix.lower() in (".txt", ".md", ".rst", ".py", ".json", ".yaml", ".yml"):
+                with open(path, "r", encoding="utf-8") as f:
+                    text = f.read()
+                metadata["file_type"] = "text"
+                return Document(
+                    id=DocumentId(),
+                    text=text,
+                    metadata=metadata,
+                )
+
             with open(path, "rb") as f:
                 reader = pypdf.PdfReader(f)
                 metadata["page_count"] = len(reader.pages)
