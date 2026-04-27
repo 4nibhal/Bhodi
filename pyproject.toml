@@ -63,6 +63,7 @@ all = [
 # CLI entry points
 bhodi = "bhodi_platform.interfaces.cli.main:main"
 bhodi-api = "bhodi_platform.interfaces.api.server:main"
+bhodi-index = "bhodi_platform.interfaces.cli.indexing:main"
 
 [dependency-groups]
 # Development dependencies
