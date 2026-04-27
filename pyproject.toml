@@ -38,7 +38,7 @@ dependencies = [
 [project.optional-dependencies]
 # Local LLM support (Ollama, llama.cpp)
 local-llm = [
-    "llama-cpp-python==0.3.9",
+    "llama-cpp-python==0.3.21",
     "ollama==0.6.1",
 ]
 
