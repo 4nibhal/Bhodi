@@ -32,7 +32,7 @@ dependencies = [
     "openai==1.57.4",
 
     # Evaluation
-    "numpy==2.2.2",
+    "numpy==2.4.4",
 ]
 
 [project.optional-dependencies]
