@@ -12,7 +12,7 @@ requires-python = ">=3.11"
 # Core dependencies - pinned to specific stable versions
 dependencies = [
     # Web framework
-    "fastapi==0.115.12",
+    "fastapi==0.136.1",
     "uvicorn[standard]==0.34.0",
 
     # Data validation
