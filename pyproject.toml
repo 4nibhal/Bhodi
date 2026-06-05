@@ -19,12 +19,19 @@ dependencies = [
     "pydantic==2.10.6",
 
     # Document parsing
-    "pypdf==5.2.0",
+    "pypdf==6.12.2",
 
     # HTTP client
     "httpx==0.27.2",
-    "aiohttp==3.11.11",
+    "aiohttp==3.14.0",
 
+    # chromadb pinned at 0.5.23 — DO NOT BUMP to 1.x
+    # CVE-2026-45829 (GHSA-f4j7-r4q5-qw2c, 9.3 Critical pre-auth code injection)
+    # affects 1.0.0–1.5.9 (no fix available as of 2026-06-05).
+    # Merging Dependabot PR #22 would INTRODUCE the vulnerability.
+    # Mitigations: ensure chromadb server runs behind reverse-proxy auth
+    # (documented in README). For Python server backend, switch to Rust-based
+    # chroma run/Docker image. Track upstream issue #6717 for 1.5.10+ fix.
     # ChromaDB for vector storage
     "chromadb==0.5.23",
 
