@@ -81,13 +81,13 @@ bhodi-index = "bhodi_platform.interfaces.cli.indexing:main"
 [dependency-groups]
 # Development dependencies
 dev = [
-    "pytest==8.3.4",
-    "pytest-asyncio==0.25.2",
-    "pytest-cov==6.0.0",
-    "pylint==3.3.3",
-    "ruff==0.8.4",
-    "mypy==1.14.1",
-    "deptry==0.23.0",
+    "pytest==9.0.3",
+    "pytest-asyncio==1.4.0",
+    "pytest-cov==7.1.0",
+    "pylint==4.0.5",
+    "ruff==0.15.16",
+    "mypy==2.1.0",
+    "deptry==0.25.1",
 ]
 
 [tool.pytest.ini_options]
