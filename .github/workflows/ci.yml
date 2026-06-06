@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+env:
+  PYTHON_VERSION: "3.11"
+  UV_VERSION: "0.10.11"
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -18,8 +22,6 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    strategy:
-      fail-fast: true
 
     steps:
       - name: Check out repository
@@ -28,30 +30,47 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Set up uv
         uses: astral-sh/setup-uv@c7f87aa956e4c323abf06d5dec078e358f6b4d04  # v6.0.0
         with:
-          version: "0.10.11"
+          version: ${{ env.UV_VERSION }}
           enable-cache: true
 
       - name: Install locked dependencies
         run: uv sync --frozen
 
-      - name: Export resolved dependencies for audit
-        run: uv export --no-emit-project -o /tmp/audit-requirements.txt
-      - name: Security audit (pip-audit)
-        run: uv run --with pip-audit pip-audit -r /tmp/audit-requirements.txt --strict --disable-pip
-
-      - name: Run test suite
+      - name: Run full test suite (includes tests/evals)
         run: uv run pytest
-
-      - name: Run eval suite explicitly
-        run: uv run pytest tests/evals
 
       - name: Verify source compilation
         run: uv run python -m compileall src tests
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - test
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c7f87aa956e4c323abf06d5dec078e358f6b4d04  # v6.0.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Install locked dependencies
+        run: uv sync --frozen
 
       - name: Build distribution artifacts
         run: |
@@ -63,7 +82,7 @@ jobs:
         run: |
           set -euo pipefail
           smoke_dir="$RUNNER_TEMP/package-smoke"
-          uv venv "$smoke_dir" --python 3.11
+          uv venv "$smoke_dir" --python "${{ env.PYTHON_VERSION }}"
           uv pip install --python "$smoke_dir/bin/python" dist/*.whl
           "$smoke_dir/bin/python" - <<'PY'
           import importlib.metadata as metadata
@@ -78,11 +97,122 @@ jobs:
               raise SystemExit(f"Missing console scripts: {sorted(missing)}")
 
           import bhodi_platform.interfaces.api.app
-          # legacy module removed in Spec #2 PR #5 — see .aiwf-governance/specs/bhodi-2026-q2-security-and-major-dependency-bumps/
           print("All checks passed")
           PY
           "$smoke_dir/bin/bhodi-index" --help
 
-      - name: Show test summary
-        if: always()
-        run: uv run pytest --tb=short -q
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - test
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c7f87aa956e4c323abf06d5dec078e358f6b4d04  # v6.0.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Install locked dependencies
+        run: uv sync --frozen
+
+      - name: Export resolved dependencies for audit
+        run: uv export --no-emit-project -o /tmp/audit-requirements.txt
+
+      - name: Security audit (pip-audit)
+        run: uv run --with pip-audit pip-audit -r /tmp/audit-requirements.txt --strict --disable-pip
+
+      - name: Security scan (bandit) [advisory]
+        shell: bash
+        run: |
+          set +e
+          uv run --with bandit bandit -r src/
+          status=$?
+          if [ "$status" -eq 0 ]; then
+            result="clean"
+          else
+            result="advisory findings present (exit $status)"
+          fi
+          printf 'bandit_exit_code=%s\n' "$status"
+          printf 'bandit advisory status: %s\n' "$result"
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            {
+              echo "## Security advisory results"
+              echo "- bandit: $result"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit 0
+
+  quality:
+    name: Quality (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - test
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c7f87aa956e4c323abf06d5dec078e358f6b4d04  # v6.0.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Install locked dependencies
+        run: uv sync --frozen
+
+      - name: Formatting check (ruff format) [advisory]
+        shell: bash
+        run: |
+          set +e
+          uv run ruff format --check src/ tests/
+          status=$?
+          if [ "$status" -eq 0 ]; then
+            result="clean"
+          else
+            result="advisory findings present (exit $status)"
+          fi
+          printf 'ruff_format_exit_code=%s\n' "$status"
+          printf 'ruff format advisory status: %s\n' "$result"
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            {
+              echo "## Quality advisory results"
+              echo "- ruff format: $result"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit 0
+
+      - name: Dependency hygiene (deptry) [advisory]
+        shell: bash
+        run: |
+          set +e
+          uv run deptry src/
+          status=$?
+          if [ "$status" -eq 0 ]; then
+            result="clean"
+          else
+            result="advisory findings present (exit $status)"
+          fi
+          printf 'deptry_exit_code=%s\n' "$status"
+          printf 'deptry advisory status: %s\n' "$result"
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            printf -- '- deptry: %s\n' "$result" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit 0
