@@ -73,8 +73,7 @@ class Container:
 
             return OpenAIEmbeddingsAdapter(self._config.embedding)
 
-        # Default to mock if provider not recognized
-        return MockEmbeddingAdapter(self._config.embedding)
+        raise ValueError(f"Unknown embedding provider: {provider}")
 
     def _create_vectorstore_adapter(self):
         """Create vector store adapter based on config."""
@@ -95,8 +94,7 @@ class Container:
 
             return ChromaVectorStoreAdapter(self._config.vector_store)
 
-        # Default to in_memory if provider not recognized
-        return MockVectorStoreAdapter(self._config.vector_store)
+        raise ValueError(f"Unknown vector_store provider: {provider}")
 
     def _create_chunker_adapter(self):
         """Create chunker adapter based on config."""
@@ -116,8 +114,7 @@ class Container:
         if provider == "recursive":
             return RecursiveChunkerAdapter(self._config.chunker)
 
-        # Default to fixed_size if provider not recognized
-        return FixedSizeChunkerAdapter(self._config.chunker)
+        raise ValueError(f"Unknown chunker provider: {provider}")
 
     def _create_documentparser_adapter(self):
         """Create document parser adapter based on config."""
@@ -138,8 +135,7 @@ class Container:
 
             return PyPDFDocumentParserAdapter(self._config.parser)
 
-        # Default to mock if provider not recognized
-        return MockDocumentParserAdapter(self._config.parser)
+        raise ValueError(f"Unknown parser provider: {provider}")
 
     def _create_llm_adapter(self):
         """Create LLM adapter based on config."""
@@ -161,8 +157,7 @@ class Container:
 
             return OpenAILLMAdapter(self._config.llm)
 
-        # Default to mock if provider not recognized
-        return MockLLMAdapter(self._config.llm)
+        raise ValueError(f"Unknown llm provider: {provider}")
 
     def _create_conversationmemory_adapter(self):
         """Create conversation memory adapter based on config."""
@@ -176,5 +171,4 @@ class Container:
         if provider == "volatile":
             return VolatileConversationMemoryAdapter(self._config.conversation)
 
-        # Default to volatile if provider not recognized
-        return VolatileConversationMemoryAdapter(self._config.conversation)
+        raise ValueError(f"Unknown conversation provider: {provider}")

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from bhodi_platform.domain.exceptions import DocumentNotFoundError
 from bhodi_platform.infrastructure.tracing import traced
 
 if TYPE_CHECKING:
@@ -73,6 +74,8 @@ class MockVectorStoreAdapter:
             for k, (chunk, _) in self._chunks.items()
             if str(chunk.document_id) == str(document_id)
         ]
+        if not keys_to_delete:
+            raise DocumentNotFoundError(str(document_id))
         for key in keys_to_delete:
             del self._chunks[key]
 

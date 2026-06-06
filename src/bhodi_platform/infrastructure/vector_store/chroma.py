@@ -6,9 +6,11 @@ Persists vectors using ChromaDB.
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any
 
 from bhodi_platform.domain.entities import Chunk
+from bhodi_platform.domain.exceptions import DocumentNotFoundError
 from bhodi_platform.domain.value_objects import DocumentId
 from bhodi_platform.ports.vector_store import VectorStorePort
 
@@ -28,19 +30,25 @@ class ChromaVectorStoreAdapter:
         self._client: Any | None = None
         self._collection: Any | None = None
 
+    def _create_client_and_collection(self) -> tuple[Any, Any]:
+        import chromadb
+        from chromadb.config import Settings
+
+        persist_dir = str(self._config.persist_directory or "./data/chroma")
+        client = chromadb.PersistentClient(
+            path=persist_dir,
+            settings=Settings(anonymized_telemetry=False),
+        )
+        collection = client.get_or_create_collection(
+            name=self._config.collection_name or "bhodi"
+        )
+        return client, collection
+
     async def _ensure_client(self) -> None:
         """Lazy initialization of Chroma client."""
         if self._client is None:
-            import chromadb
-            from chromadb.config import Settings
-
-            persist_dir = str(self._config.persist_directory or "./data/chroma")
-            self._client = chromadb.PersistentClient(
-                path=persist_dir,
-                settings=Settings(anonymized_telemetry=False),
-            )
-            self._collection = self._client.get_or_create_collection(
-                name=self._config.collection_name or "bhodi"
+            self._client, self._collection = await asyncio.to_thread(
+                self._create_client_and_collection
             )
 
     async def add(
@@ -62,7 +70,8 @@ class ChromaVectorStoreAdapter:
             for chunk in chunks
         ]
 
-        self._collection.add(
+        await asyncio.to_thread(
+            self._collection.add,
             ids=ids,
             embeddings=embeddings,
             documents=documents,
@@ -77,7 +86,8 @@ class ChromaVectorStoreAdapter:
         """Search for similar chunks."""
         await self._ensure_client()
 
-        results = self._collection.query(
+        results = await asyncio.to_thread(
+            self._collection.query,
             query_embeddings=[query_embedding],
             n_results=top_k,
         )
@@ -119,10 +129,16 @@ class ChromaVectorStoreAdapter:
         await self._ensure_client()
 
         # Query to find all chunks for this document
-        result = self._collection.get(where={"document_id": str(document_id)})
+        result = await asyncio.to_thread(
+            self._collection.get,
+            where={"document_id": str(document_id)},
+        )
 
-        if result["ids"]:
-            self._collection.delete(ids=result["ids"])
+        ids = result.get("ids") or []
+        if not ids:
+            raise DocumentNotFoundError(str(document_id))
+
+        await asyncio.to_thread(self._collection.delete, ids=ids)
 
     async def persist(self) -> None:
         """Chroma persists automatically with PersistentClient."""

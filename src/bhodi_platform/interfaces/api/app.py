@@ -7,8 +7,12 @@ Creates and configures the Bhodi API server.
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
@@ -18,8 +22,25 @@ from bhodi_platform.application.facade import BhodiApplication
 from bhodi_platform.infrastructure.container import Container
 
 
+API_SOURCE_ROOT_ENV = "BHODI_API_SOURCE_ROOT"
+API_ALLOWED_SOURCE_SUFFIXES = frozenset({".pdf", ".txt", ".md", ".rst"})
+
+
+@dataclass(frozen=True, slots=True)
+class ApiSourcePolicy:
+    root: Path | None
+    allowed_suffixes: frozenset[str] = API_ALLOWED_SOURCE_SUFFIXES
+
+
+def _load_api_source_policy() -> ApiSourcePolicy:
+    configured_root = os.getenv(API_SOURCE_ROOT_ENV)
+    if not configured_root:
+        return ApiSourcePolicy(root=None)
+    return ApiSourcePolicy(root=Path(configured_root).expanduser().resolve())
+
+
 # Module-level state
-_state: dict = {"app": None, "bhodi_app": None}
+_state: dict[str, Any] = {"app": None, "bhodi_app": None, "source_policy": None}
 
 # Rate limiting state
 _rate_limit_requests: dict[str, list[float]] = {}
@@ -69,8 +90,12 @@ def create_app(config: BhodiConfig | None = None) -> FastAPI:
         cfg = config or BhodiConfig()
         container = Container(cfg)
         _state["bhodi_app"] = container.build()
-        yield
-        _state["bhodi_app"] = None
+        _state["source_policy"] = _load_api_source_policy()
+        try:
+            yield
+        finally:
+            _state["bhodi_app"] = None
+            _state["source_policy"] = None
 
     app = FastAPI(
         title="Bhodi API",
@@ -112,3 +137,11 @@ def get_bhodi_app() -> BhodiApplication:
     if app is None:
         raise RuntimeError("Application not initialized")
     return app
+
+
+def get_api_source_policy() -> ApiSourcePolicy:
+    """Get the API-local source policy."""
+    policy = _state.get("source_policy")
+    if policy is None:
+        raise RuntimeError("Application not initialized")
+    return policy
