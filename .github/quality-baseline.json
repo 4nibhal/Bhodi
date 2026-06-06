@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "generated_from_sha": "dbacc34d8e3c69b1535c2d3b4071bc1f014b70f6",
+  "generated_on": "2026-06-06",
+  "metrics": {
+    "ruff_check_total": 1496,
+    "ruff_format_files": 27,
+    "mypy_errors_total": 110,
+    "deptry_issues_total": 22
+  }
+}
