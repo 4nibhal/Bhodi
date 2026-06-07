@@ -7,8 +7,7 @@ This module will be removed in a future release.
 
 from typing import Any
 
-from bhodi_platform.indexing.application import DocumentIndexingService
-from bhodi_platform.indexing.settings import IndexingSettings
+from bhodi_platform.indexing import DocumentIndexingService, IndexingSettings
 
 __all__ = [
     "load_and_index_documents_from_directory",

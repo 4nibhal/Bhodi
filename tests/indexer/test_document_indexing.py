@@ -1,33 +1,13 @@
 # ruff: noqa: INP001
 
-import importlib
-import sys
-from types import ModuleType
 from unittest.mock import Mock, patch
 
 import pytest
 
-
-def _import_document_indexing_module() -> ModuleType:
-    sys.modules.pop("indexer.document_indexing", None)
-    sys.modules.pop("bhodi_platform.indexing.application", None)
-
-    fake_application = ModuleType("bhodi_platform.indexing.application")
-
-    class StubDocumentIndexingService:
-        pass
-
-    fake_application.DocumentIndexingService = StubDocumentIndexingService
-
-    with patch.dict(
-        sys.modules,
-        {"bhodi_platform.indexing.application": fake_application},
-    ):
-        return importlib.import_module("indexer.document_indexing")
+import indexer.document_indexing as document_indexing
 
 
 def test_load_and_index_documents_from_directory_delegates_to_service() -> None:
-    document_indexing = _import_document_indexing_module()
     directory_path = "docs"
     service = Mock()
     service.index_directory.return_value = 7
@@ -60,7 +40,6 @@ def test_load_and_index_documents_from_directory_delegates_to_service() -> None:
 
 
 def test_load_and_index_single_file_delegates_to_service() -> None:
-    document_indexing = _import_document_indexing_module()
     file_path = "file.pdf"
     service = Mock()
     service.index_file.return_value = 3

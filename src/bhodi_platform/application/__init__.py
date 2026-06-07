@@ -3,6 +3,8 @@ from bhodi_platform.application.models import (
     HealthStatus,
     IndexDocumentRequest,
     IndexDocumentResponse,
+    IndexDocumentsRequest,
+    IndexDocumentsResponse,
     QueryRequest,
     QueryResponse,
 )
@@ -14,6 +16,8 @@ __all__ = [
     "HealthStatus",
     "IndexDocumentRequest",
     "IndexDocumentResponse",
+    "IndexDocumentsRequest",
+    "IndexDocumentsResponse",
     "IndexDocumentsUseCase",
     "QueryRequest",
     "QueryResponse",

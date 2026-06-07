@@ -20,6 +20,17 @@ class IndexDocumentResponse(BaseModel):
     chunk_count: int
 
 
+class IndexDocumentsRequest(BaseModel):
+    document_path: Path
+    cwd: Path | None = None
+
+
+class IndexDocumentsResponse(BaseModel):
+    indexed_fragments: int
+    source_kind: str
+    resolved_path: Path
+
+
 class QueryRequest(BaseModel):
     question: str
     conversation_id: str | None = None

@@ -10,14 +10,13 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from bhodi_platform.indexing.runtime import (
+from bhodi_platform.indexing import (
     EmbeddingsFactory,
     get_persistent_retriever,
-    get_persistent_runtime,
     get_persistent_vectorstore,
     initialize_persistent_runtime,
+    IndexingSettings,
 )
-from bhodi_platform.indexing.settings import IndexingSettings
 
 
 def initialize_vectorstore(
