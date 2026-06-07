@@ -72,6 +72,41 @@ class TestEmbeddingPortContract:
         assert all(isinstance(x, float) for x in result)
 
     @pytest.mark.asyncio
+    async def test_embed_query_is_deterministic_for_same_text(self, adapter):
+        """Same input text returns the same embedding."""
+        first = await adapter.embed_query("hello")
+        second = await adapter.embed_query("hello")
+
+        assert first == second
+
+    @pytest.mark.asyncio
+    async def test_embed_query_differs_for_different_text(self, adapter):
+        """Different input text returns a different embedding."""
+        first = await adapter.embed_query("hello")
+        second = await adapter.embed_query("world")
+
+        assert first != second
+
+    @pytest.mark.asyncio
+    async def test_embeddings_respect_dimensions_and_value_bounds(self, adapter):
+        """Embeddings respect configured dimensions and stay in range."""
+        result = await adapter.embed_documents(["hello", "world"])
+
+        assert len(result) == 2
+        for embedding in result:
+            assert len(embedding) == 384
+            assert all(-1.0 <= value <= 1.0 for value in embedding)
+
+    @pytest.mark.asyncio
+    async def test_embed_query_respects_configured_dimensions(self):
+        """Embedding length matches the configured dimensions."""
+        adapter = MockEmbeddingAdapter(EmbeddingConfig(provider="mock", dimensions=7))
+
+        result = await adapter.embed_query("hello")
+
+        assert len(result) == 7
+
+    @pytest.mark.asyncio
     async def test_dimensions(self, adapter):
         """dimensions returns int."""
         dims = await adapter.dimensions()

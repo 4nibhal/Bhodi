@@ -132,26 +132,8 @@ jobs:
       - name: Security audit (pip-audit)
         run: uv run --with pip-audit pip-audit -r /tmp/audit-requirements.txt --strict --disable-pip
 
-      - name: Security scan (bandit) [advisory]
-        shell: bash
-        run: |
-          set +e
-          uv run --with bandit bandit -r src/
-          status=$?
-          if [ "$status" -eq 0 ]; then
-            result="clean"
-          else
-            result="advisory findings present (exit $status)"
-          fi
-          printf 'bandit_exit_code=%s\n' "$status"
-          printf 'bandit advisory status: %s\n' "$result"
-          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-            {
-              echo "## Security advisory results"
-              echo "- bandit: $result"
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
-          exit 0
+      - name: Security scan (bandit)
+        run: uv run --with bandit bandit -r src/
 
   quality:
     name: Quality
