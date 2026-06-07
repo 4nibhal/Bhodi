@@ -1,5 +1,9 @@
 import importlib
+import os
 import sys
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -32,3 +36,44 @@ class ConfigIndexerCompatibilityTest(TestCase):
         self.assertIs(returned_retriever, retriever)
         self.assertEqual(initialize_runtime.call_args.args[0], "/tmp/chroma_db")
         self.assertIsNotNone(initialize_runtime.call_args.kwargs["embeddings_factory"])
+
+
+def test_persist_directory_honors_environment_override() -> None:
+    sys.modules.pop("indexer.config_indexer", None)
+
+    with patch.dict(
+        os.environ,
+        {"BHODI_INDEX_PERSIST_DIRECTORY": "/tmp/custom-index-path"},
+        clear=False,
+    ):
+        module = importlib.import_module("indexer.config_indexer")
+
+    assert module.PERSIST_DIRECTORY == "/tmp/custom-index-path"
+
+
+def test_persist_directory_defaults_to_cwd_chroma_db() -> None:
+    sys.modules.pop("indexer.config_indexer", None)
+
+    with TemporaryDirectory() as tmpdir:
+        with patch("pathlib.Path.cwd", return_value=Path(tmpdir)):
+            with patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("BHODI_INDEX_PERSIST_DIRECTORY", None)
+                module = importlib.import_module("indexer.config_indexer")
+
+    assert module.PERSIST_DIRECTORY.endswith("chroma_db")
+    assert module.PERSIST_DIRECTORY == str(Path(tmpdir) / "chroma_db")
+
+
+def test_persistent_vectorstore_proxy_is_lazy_on_import() -> None:
+    sys.modules.pop("indexer.config_indexer", None)
+    vectorstore = SimpleNamespace(marker="ready")
+
+    with patch(
+        "bhodi_platform.indexing.runtime.get_persistent_vectorstore",
+        return_value=vectorstore,
+    ) as get_persistent_vectorstore:
+        module = importlib.import_module("indexer.config_indexer")
+        get_persistent_vectorstore.assert_not_called()
+
+    assert module.persistent_vectorstore.marker == "ready"
+    get_persistent_vectorstore.assert_called_once_with()
