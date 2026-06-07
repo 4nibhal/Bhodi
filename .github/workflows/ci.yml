@@ -154,7 +154,7 @@ jobs:
           exit 0
 
   quality:
-    name: Quality (advisory)
+    name: Quality
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs:
@@ -178,41 +178,5 @@ jobs:
       - name: Install locked dependencies
         run: uv sync --frozen
 
-      - name: Formatting check (ruff format) [advisory]
-        shell: bash
-        run: |
-          set +e
-          uv run ruff format --check src/ tests/
-          status=$?
-          if [ "$status" -eq 0 ]; then
-            result="clean"
-          else
-            result="advisory findings present (exit $status)"
-          fi
-          printf 'ruff_format_exit_code=%s\n' "$status"
-          printf 'ruff format advisory status: %s\n' "$result"
-          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-            {
-              echo "## Quality advisory results"
-              echo "- ruff format: $result"
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
-          exit 0
-
-      - name: Dependency hygiene (deptry) [advisory]
-        shell: bash
-        run: |
-          set +e
-          uv run deptry src/
-          status=$?
-          if [ "$status" -eq 0 ]; then
-            result="clean"
-          else
-            result="advisory findings present (exit $status)"
-          fi
-          printf 'deptry_exit_code=%s\n' "$status"
-          printf 'deptry advisory status: %s\n' "$result"
-          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-            printf -- '- deptry: %s\n' "$result" >> "$GITHUB_STEP_SUMMARY"
-          fi
-          exit 0
+      - name: Quality ratchet
+        run: uv run python scripts/quality_ratchet.py --baseline .github/quality-baseline.json
