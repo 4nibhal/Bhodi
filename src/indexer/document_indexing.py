@@ -7,8 +7,7 @@ This module will be removed in a future release.
 
 from typing import Any
 
-from bhodi_platform.indexing.application import DocumentIndexingService
-from bhodi_platform.indexing.settings import IndexingSettings
+from bhodi_platform.indexing import DocumentIndexingService, IndexingSettings
 
 __all__ = [
     "load_and_index_documents_from_directory",
@@ -21,17 +20,19 @@ def _build_indexing_service() -> DocumentIndexingService:
 
 
 def load_and_index_documents_from_directory(
-    directory_path: str, vectorstore: Any
+    directory_path: str,
+    vectorstore: Any,
 ) -> int:
     """
-    Loads documents from a directory, splits them and adds them to the vectorstore.
+    Load documents from a directory, split them, and add them to the vectorstore.
 
     Args:
-        directory_path (str): Path to the directory containing documents.
-        vectorstore (Any): The vectorstore instance where documents will be added.
+        directory_path: Path to the directory containing documents.
+        vectorstore: The vectorstore instance where documents will be added.
 
     Returns:
-        int: The number of document fragments indexed.
+        int: Number of document fragments indexed.
+
     """
     service = _build_indexing_service()
     settings = IndexingSettings.from_environment()
@@ -40,21 +41,23 @@ def load_and_index_documents_from_directory(
 
 def load_and_index_single_file(file_path: str, vectorstore: Any) -> int:
     """
-    Loads a single file, splits its contents and adds it to the vectorstore.
+    Load a single file, split its contents, and add them to the vectorstore.
 
     Args:
-        file_path (str): Path to the file.
-        vectorstore (Any): The vectorstore instance where the document will be added.
+        file_path: Path to the file.
+        vectorstore: The vectorstore instance where the document will be added.
 
     Returns:
-        int: The number of document fragments indexed.
+        int: Number of document fragments indexed.
+
     """
     service = _build_indexing_service()
     settings = IndexingSettings.from_environment()
     return service.index_file(file_path, vectorstore, settings)
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     if name in __all__:
         return locals()[name]
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    message = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(message)
