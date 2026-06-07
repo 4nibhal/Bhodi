@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeAlias
 
 from pydantic import BaseModel, Field
 
+PathType: TypeAlias = Path
+
 
 class IndexDocumentRequest(BaseModel):
-    source: str | Path
+    source: str | PathType
     metadata: dict[str, Any] = Field(default_factory=dict)
     chunk_size: int | None = None
     overlap: int | None = None
@@ -21,14 +23,14 @@ class IndexDocumentResponse(BaseModel):
 
 
 class IndexDocumentsRequest(BaseModel):
-    document_path: Path
-    cwd: Path | None = None
+    document_path: PathType
+    cwd: PathType | None = None
 
 
 class IndexDocumentsResponse(BaseModel):
     indexed_fragments: int
     source_kind: str
-    resolved_path: Path
+    resolved_path: PathType
 
 
 class QueryRequest(BaseModel):

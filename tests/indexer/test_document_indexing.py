@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-import indexer.document_indexing as document_indexing
+from indexer import document_indexing
 
 
 def test_load_and_index_documents_from_directory_delegates_to_service() -> None:

@@ -1,3 +1,6 @@
+from importlib import import_module
+from typing import TYPE_CHECKING, Any
+
 from bhodi_platform.application.models import (
     CitationResponse,
     HealthStatus,
@@ -12,6 +15,7 @@ from bhodi_platform.application.models import (
 __all__ = [
     "AnswerQueryUseCase",
     "BhodiApplication",
+    "BhodiRuntime",
     "CitationResponse",
     "HealthStatus",
     "IndexDocumentRequest",
@@ -21,25 +25,37 @@ __all__ = [
     "IndexDocumentsUseCase",
     "QueryRequest",
     "QueryResponse",
-    "BhodiRuntime",
 ]
 
+_EXPORTS = {
+    "AnswerQueryUseCase": (
+        "bhodi_platform.application.answer_query",
+        "AnswerQueryUseCase",
+    ),
+    "BhodiApplication": (
+        "bhodi_platform.application.facade",
+        "BhodiApplication",
+    ),
+    "BhodiRuntime": (
+        "bhodi_platform.application.runtime",
+        "BhodiRuntime",
+    ),
+    "IndexDocumentsUseCase": (
+        "bhodi_platform.application.index_documents",
+        "IndexDocumentsUseCase",
+    ),
+}
 
-def __getattr__(name: str):
-    if name == "AnswerQueryUseCase":
-        from bhodi_platform.application.answer_query import AnswerQueryUseCase
+if TYPE_CHECKING:
+    from bhodi_platform.application.answer_query import AnswerQueryUseCase
+    from bhodi_platform.application.facade import BhodiApplication
+    from bhodi_platform.application.index_documents import IndexDocumentsUseCase
+    from bhodi_platform.application.runtime import BhodiRuntime
 
-        return AnswerQueryUseCase
-    if name == "BhodiApplication":
-        from bhodi_platform.application.facade import BhodiApplication
 
-        return BhodiApplication
-    if name == "IndexDocumentsUseCase":
-        from bhodi_platform.application.index_documents import IndexDocumentsUseCase
-
-        return IndexDocumentsUseCase
-    if name == "BhodiRuntime":
-        from bhodi_platform.application.runtime import BhodiRuntime
-
-        return BhodiRuntime
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+def __getattr__(name: str) -> Any:
+    if name not in _EXPORTS:
+        message = f"module {__name__!r} has no attribute {name!r}"
+        raise AttributeError(message)
+    module_name, attribute_name = _EXPORTS[name]
+    return getattr(import_module(module_name), attribute_name)

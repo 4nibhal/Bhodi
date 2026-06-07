@@ -1,3 +1,5 @@
+# ruff: noqa: INP001
+
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -28,9 +30,18 @@ def test_document_indexing_service_indexes_directories(tmp_path: Path) -> None:
         settings=settings,
     )
 
-    assert response.indexed_fragments == expected_response
-    assert response.source_kind == "directory"
-    assert response.resolved_path == directory_path.resolve()
+    if response.indexed_fragments != expected_response:
+        pytest.fail(
+            "Expected "
+            f"{expected_response} indexed directory fragments, got "
+            f"{response.indexed_fragments}",
+        )
+    if response.source_kind != "directory":
+        pytest.fail(f"Expected source_kind='directory', got {response.source_kind!r}")
+    if response.resolved_path != directory_path.resolve():
+        pytest.fail(
+            f"Expected resolved_path={directory_path.resolve()!r}, got {response.resolved_path!r}",
+        )
     service.index_directory.assert_called_once_with(
         str(directory_path.resolve()),
         vectorstore,
@@ -54,9 +65,18 @@ def test_document_indexing_service_indexes_files(tmp_path: Path) -> None:
         settings=settings,
     )
 
-    assert response.indexed_fragments == expected_response
-    assert response.source_kind == "file"
-    assert response.resolved_path == file_path.resolve()
+    if response.indexed_fragments != expected_response:
+        pytest.fail(
+            "Expected "
+            f"{expected_response} indexed file fragments, got "
+            f"{response.indexed_fragments}",
+        )
+    if response.source_kind != "file":
+        pytest.fail(f"Expected source_kind='file', got {response.source_kind!r}")
+    if response.resolved_path != file_path.resolve():
+        pytest.fail(
+            f"Expected resolved_path={file_path.resolve()!r}, got {response.resolved_path!r}",
+        )
     service.index_file.assert_called_once_with(
         str(file_path.resolve()),
         vectorstore,
@@ -100,7 +120,8 @@ def test_indexing_engine_delegates_to_index_request(tmp_path: Path) -> None:
 
     response = engine.index(request)
 
-    assert response is expected_response
+    if response is not expected_response:
+        pytest.fail("IndexingEngine.index should return the delegated response object")
     settings_factory.assert_called_once_with(cwd=tmp_path)
     runtime_factory.assert_called_once_with(str(settings.persist_directory))
     service.index_request.assert_called_once_with(

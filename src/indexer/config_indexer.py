@@ -8,15 +8,17 @@ This module will be removed in a future release.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, TypeAlias
 
 from bhodi_platform.indexing import (
     EmbeddingsFactory,
+    IndexingSettings,
     get_persistent_retriever,
     get_persistent_vectorstore,
     initialize_persistent_runtime,
-    IndexingSettings,
 )
+
+FactoryCallable: TypeAlias = Callable[[], Any]
 
 
 def initialize_vectorstore(
@@ -24,14 +26,15 @@ def initialize_vectorstore(
     embeddings_factory: EmbeddingsFactory | None = None,
 ) -> tuple[Any, Any]:
     """
-    Initializes the embeddings, vectorstore, and retriever for document indexing.
-    Uses persistent storage.
+    Initialize the persistent embeddings, vectorstore, and retriever.
 
     Args:
-        persist_directory (str): Path where the vectorstore will persist data.
+        persist_directory: Path where the vectorstore will persist data.
+        embeddings_factory: Optional embeddings factory override.
 
     Returns:
-        Tuple containing the vectorstore and retriever.
+        tuple[Any, Any]: The delegated vectorstore and retriever.
+
     """
     return initialize_persistent_runtime(
         persist_directory,
@@ -40,7 +43,7 @@ def initialize_vectorstore(
 
 
 class _LazyObjectProxy:
-    def __init__(self, factory: Callable[[], Any]) -> None:
+    def __init__(self, factory: FactoryCallable) -> None:
         self._factory = factory
 
     def __getattr__(self, attribute: str) -> Any:
@@ -54,12 +57,13 @@ persistent_retriever = _LazyObjectProxy(get_persistent_retriever)
 __all__ = [
     "PERSIST_DIRECTORY",
     "initialize_vectorstore",
-    "persistent_vectorstore",
     "persistent_retriever",
+    "persistent_vectorstore",
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     if name in __all__:
         return locals()[name]
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    message = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(message)
