@@ -1,3 +1,5 @@
+# ruff: noqa: INP001
+
 import importlib
 import sys
 
@@ -48,4 +50,5 @@ def test_top_level_package_import_still_works() -> None:
 
     package = importlib.import_module("bhodi_doc_analyzer")
 
-    assert package.__name__ == "bhodi_doc_analyzer"
+    if package.__name__ != "bhodi_doc_analyzer":
+        pytest.fail(f"Expected package name 'bhodi_doc_analyzer', got {package.__name__!r}")

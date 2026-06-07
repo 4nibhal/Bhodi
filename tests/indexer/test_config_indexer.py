@@ -1,3 +1,5 @@
+# ruff: noqa: INP001
+
 import importlib
 import os
 import sys
@@ -7,6 +9,8 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
+import pytest
+
 
 class ConfigIndexerCompatibilityTest(TestCase):
     def test_import_does_not_load_legacy_config(self) -> None:
@@ -15,10 +19,14 @@ class ConfigIndexerCompatibilityTest(TestCase):
 
         importlib.import_module("indexer.config_indexer")
 
-        self.assertNotIn("bhodi_doc_analyzer.config", sys.modules)
+        if "bhodi_doc_analyzer.config" in sys.modules:
+            pytest.fail(
+                "Importing indexer.config_indexer should not import bhodi_doc_analyzer.config",
+            )
 
     def test_initialize_vectorstore_delegates_to_platform_runtime(self) -> None:
         module = importlib.import_module("indexer.config_indexer")
+        persist_directory = "chroma_db"
         vectorstore = object()
         retriever = object()
 
@@ -28,40 +36,61 @@ class ConfigIndexerCompatibilityTest(TestCase):
             return_value=(vectorstore, retriever),
         ) as initialize_runtime:
             returned_vectorstore, returned_retriever = module.initialize_vectorstore(
-                "/tmp/chroma_db",
-                embeddings_factory=lambda: object(),
+                persist_directory,
+                embeddings_factory=object,
             )
 
-        self.assertIs(returned_vectorstore, vectorstore)
-        self.assertIs(returned_retriever, retriever)
-        self.assertEqual(initialize_runtime.call_args.args[0], "/tmp/chroma_db")
-        self.assertIsNotNone(initialize_runtime.call_args.kwargs["embeddings_factory"])
+        if returned_vectorstore is not vectorstore:
+            pytest.fail("initialize_vectorstore should return the delegated vectorstore")
+
+        if returned_retriever is not retriever:
+            pytest.fail("initialize_vectorstore should return the delegated retriever")
+
+        initialize_runtime.assert_called_once_with(
+            persist_directory,
+            embeddings_factory=object,
+        )
 
 
 def test_persist_directory_honors_environment_override() -> None:
     sys.modules.pop("indexer.config_indexer", None)
+    custom_index_path = "custom-index-path"
 
     with patch.dict(
         os.environ,
-        {"BHODI_INDEX_PERSIST_DIRECTORY": "/tmp/custom-index-path"},
+        {"BHODI_INDEX_PERSIST_DIRECTORY": custom_index_path},
         clear=False,
     ):
         module = importlib.import_module("indexer.config_indexer")
 
-    assert module.PERSIST_DIRECTORY == "/tmp/custom-index-path"
+    if custom_index_path != module.PERSIST_DIRECTORY:
+        pytest.fail(
+            f"Expected PERSIST_DIRECTORY={custom_index_path!r}, got {module.PERSIST_DIRECTORY!r}",
+        )
 
 
 def test_persist_directory_defaults_to_cwd_chroma_db() -> None:
     sys.modules.pop("indexer.config_indexer", None)
 
-    with TemporaryDirectory() as tmpdir:
-        with patch("pathlib.Path.cwd", return_value=Path(tmpdir)):
-            with patch.dict(os.environ, {}, clear=False):
-                os.environ.pop("BHODI_INDEX_PERSIST_DIRECTORY", None)
-                module = importlib.import_module("indexer.config_indexer")
+    with (
+        TemporaryDirectory() as tmpdir,
+        patch("pathlib.Path.cwd", return_value=Path(tmpdir)),
+        patch.dict(os.environ, {}, clear=False),
+    ):
+        os.environ.pop("BHODI_INDEX_PERSIST_DIRECTORY", None)
+        module = importlib.import_module("indexer.config_indexer")
 
-    assert module.PERSIST_DIRECTORY.endswith("chroma_db")
-    assert module.PERSIST_DIRECTORY == str(Path(tmpdir) / "chroma_db")
+    expected_directory = str(Path(tmpdir) / "chroma_db")
+
+    if not module.PERSIST_DIRECTORY.endswith("chroma_db"):
+        pytest.fail(
+            f"Expected PERSIST_DIRECTORY to end with 'chroma_db', got {module.PERSIST_DIRECTORY!r}",
+        )
+
+    if expected_directory != module.PERSIST_DIRECTORY:
+        pytest.fail(
+            f"Expected PERSIST_DIRECTORY={expected_directory!r}, got {module.PERSIST_DIRECTORY!r}",
+        )
 
 
 def test_persistent_vectorstore_proxy_is_lazy_on_import() -> None:
@@ -75,5 +104,7 @@ def test_persistent_vectorstore_proxy_is_lazy_on_import() -> None:
         module = importlib.import_module("indexer.config_indexer")
         get_persistent_vectorstore.assert_not_called()
 
-    assert module.persistent_vectorstore.marker == "ready"
+    if module.persistent_vectorstore.marker != "ready":
+        pytest.fail("persistent_vectorstore should resolve lazily to the delegated vectorstore")
+
     get_persistent_vectorstore.assert_called_once_with()
