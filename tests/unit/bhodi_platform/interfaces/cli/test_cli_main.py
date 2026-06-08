@@ -3,22 +3,60 @@
 from __future__ import annotations
 
 import sys
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from bhodi_platform.interfaces.cli.main import main as cli_main
+import httpx as real_httpx
+
+from bhodi_platform.interfaces.cli.main import _health_command, main as cli_main
+
+
+class TestHealthCommand:
+    """Tests for the live-API health probe."""
+
+    def test_returns_0_when_api_healthy(self) -> None:
+        with patch("bhodi_platform.interfaces.cli.main.httpx.get") as mock_get:
+            mock_get.return_value = MagicMock(
+                status_code=200,
+                json=lambda: {
+                    "status": "healthy",
+                    "version": "0.1.0",
+                    "services": {
+                        "embedding": True,
+                        "vector_store": True,
+                        "llm": True,
+                    },
+                },
+            )
+            assert _health_command() == 0
+
+    def test_returns_2_when_api_degraded(self) -> None:
+        with patch("bhodi_platform.interfaces.cli.main.httpx.get") as mock_get:
+            mock_get.return_value = MagicMock(
+                status_code=503,
+                json=lambda: {
+                    "status": "degraded",
+                    "version": "0.1.0",
+                    "services": {
+                        "embedding": True,
+                        "vector_store": False,
+                        "llm": True,
+                    },
+                },
+            )
+            assert _health_command() == 2
+
+    def test_returns_1_when_api_unreachable(self) -> None:
+        with patch("bhodi_platform.interfaces.cli.main.httpx.get") as mock_get:
+            mock_get.side_effect = real_httpx.RequestError(
+                "connection refused", request=MagicMock()
+            )
+            assert _health_command() == 1
 
 
 class TestCliMain:
     """Tests for the main CLI dispatcher."""
-
-    def test_health_command(self, capsys):
-        """bhodi health should print OK."""
-        with patch.object(sys, "argv", ["bhodi", "health"]):
-            cli_main()
-        captured = capsys.readouterr()
-        assert "Health check: OK" in captured.out
 
     def test_index_help(self, capsys):
         """bhodi index --help should show usage."""
@@ -41,11 +79,9 @@ class TestCliMain:
         assert "query" in captured.out
 
     def test_no_command_prints_help(self, capsys):
-        """Running bhodi without arguments should print help and exit 1."""
-        with pytest.raises(SystemExit) as exc_info:
-            with patch.object(sys, "argv", ["bhodi"]):
-                cli_main()
-        assert exc_info.value.code == 1
+        """Running bhodi without arguments should print help and return 1."""
+        with patch.object(sys, "argv", ["bhodi"]):
+            assert cli_main() == 1
         captured = capsys.readouterr()
         assert "usage:" in captured.out
 
