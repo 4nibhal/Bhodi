@@ -65,7 +65,6 @@ jobs:
               raise SystemExit(f"Missing console scripts: {sorted(missing)}")
 
           import bhodi_platform.interfaces.api.app
-          import indexer.cli
           print("All checks passed")
           PY
           "$smoke_dir/bin/bhodi-index" --help

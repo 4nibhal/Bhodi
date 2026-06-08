@@ -212,11 +212,7 @@ flowchart TB
     end
 
     subgraph Cross["Cross-cutting"]
-        Answering["answering/"]
-        Conversation["conversation/"]
         Evaluation["evaluation/"]
-        Indexing["indexing/"]
-        Retrieval["retrieval/"]
     end
 
     API --> Facade
@@ -316,17 +312,6 @@ config = BhodiConfig(
 Swap adapters by changing the `provider` field. No code changes are required; the `Container` rewires everything.
 
 > **Security note (ChromaDB pinning).** We pin `chromadb==1.5.9`. The server-side CVE-2026-45829 (CVSS 9.3, pre-auth code injection) affects 1.0.0–1.5.9, but Bhodi only uses `chromadb.PersistentClient` in embedded mode (`src/bhodi_platform/infrastructure/vector_store/chroma.py`), which never executes the vulnerable code path. We do not deploy the standalone `chromadb/chroma` server. Track upstream issue #6717 for the 1.5.10+ fix.
-
----
-
-## Legacy compatibility
-
-Two transitional surfaces are still in the tree while downstream code migrates:
-
-- `src/bhodi_doc_analyzer/` — only the package root and `bhodi_doc_analyzer.config` are intentionally supported; everything else is in the process of being retired.
-- `src/indexer/` — legacy indexing shims that delegate into `bhodi_platform.indexing`.
-
-New work belongs in `src/bhodi_platform/`. The legacy packages are not feature-complete and should not be used for greenfield code.
 
 ---
 

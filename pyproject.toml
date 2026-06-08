@@ -105,7 +105,7 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["bhodi*", "bhodi_platform*"]
+include = ["bhodi_platform*"]
 
 [tool.setuptools.package-data]
 "bhodi_platform" = ["evaluation/fixtures/*.json"]

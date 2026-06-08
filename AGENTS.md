@@ -7,7 +7,6 @@ metadata:
   system: "aiwf"
   product_name: "Bhodi"
   product_posture: "backend-first document processing platform"
-  legacy_surfaces: ["src/bhodi_doc_analyzer", "src/indexer"]
   non_product_paths: ["ai-workflow", ".opencode", ".aiwf"]
 ---
 
@@ -19,7 +18,6 @@ This file is the root governance contract for Bhodi. The product is a backend-fi
 ## Product Boundary
 - Product code lives under `src/` and future product-facing docs/tests.
 - `ai-workflow/`, `.opencode/`, and `.aiwf/` are developer operating model infrastructure and must not become runtime dependencies of the shipped product.
-- Legacy packages in `src/bhodi_doc_analyzer/` and `src/indexer/` are transitional surfaces to be extracted into the target backend architecture.
 
 ## Architectural Direction
 - Prefer backend-first service boundaries over TUI-centric orchestration.
@@ -115,7 +113,6 @@ Source definitions live in `opencode-flows/agent/` and synchronize into `.openco
 |------------|----------|
 | `src/` | [`src/AGENTS.md`](src/AGENTS.md) |
 | `src/bhodi_platform/` | [`src/bhodi_platform/AGENTS.md`](src/bhodi_platform/AGENTS.md) |
-| `src/bhodi_platform/interfaces/tui/` | [`src/bhodi_platform/interfaces/tui/AGENTS.md`](src/bhodi_platform/interfaces/tui/AGENTS.md) |
 | `tests/` | [`tests/AGENTS.md`](tests/AGENTS.md) |
 | `skills/` | [`skills/AGENTS.md`](skills/AGENTS.md) |
 | `opencode-flows/` | [`opencode-flows/AGENTS.md`](opencode-flows/AGENTS.md) |

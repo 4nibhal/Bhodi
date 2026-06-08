@@ -46,11 +46,7 @@ flowchart TB
     end
 
     subgraph Cross["Cross-cutting packages"]
-        Answering["answering/"]
-        Conversation["conversation/"]
         Evaluation["evaluation/"]
-        Indexing["indexing/"]
-        Retrieval["retrieval/"]
     end
 
     API --> Facade
@@ -109,9 +105,7 @@ src/bhodi_platform/
 │   ├── chunker.py
 │   ├── document_parser.py
 │   ├── llm.py
-│   ├── conversation_memory.py
-│   ├── answering.py
-│   └── indexing.py
+│   └── conversation_memory.py
 │
 ├── infrastructure/             # Concrete adapters + composition root
 │   ├── container.py            # Container (DI wiring; the only place that knows concrete types)
@@ -126,19 +120,9 @@ src/bhodi_platform/
 │   ├── api/                    # FastAPI app, server, routes (health, indexing, query)
 │   └── cli/                    # argparse commands (main, indexing, query)
 │
-├── answering/                  # Generation engine and collaborators
-├── conversation/               # Conversation infrastructure and runtime
-├── evaluation/                 # Fixtures, runner, scoring, thresholds
-├── indexing/                   # Higher-level indexing pipeline helpers
-└── retrieval/                  # Retrieval runtime and settings
+├── indexing/                   # Loaders, vector store, retriever builders
+└── evaluation/                 # Fixtures, scoring, thresholds
 ```
-
-Two transitional surfaces still live in the tree:
-
-- `src/bhodi_doc_analyzer/` — package root and `bhodi_doc_analyzer.config` are intentionally supported; other symbols are being retired.
-- `src/indexer/` — legacy indexing shims that delegate into `bhodi_platform.indexing`.
-
-New work belongs in `src/bhodi_platform/`.
 
 ---
 
@@ -327,7 +311,7 @@ This format is stable across adapters; alternative shapes are introduced by addi
 
 ### Cross-cutting packages
 
-`answering/`, `conversation/`, `evaluation/`, `indexing/`, and `retrieval/` are first-party packages that build on top of the core `domain → application → ports → infrastructure` stack. They are part of the shipped product surface, not optional plugins.
+`indexing/` and `evaluation/` are first-party packages that build on top of the core `domain → application → ports → infrastructure` stack. They are part of the shipped product surface, not optional plugins.
 
 ---
 
