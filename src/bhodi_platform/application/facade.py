@@ -13,6 +13,7 @@ from bhodi_platform.application.models import (
     QueryResponse,
     CitationResponse,
 )
+from bhodi_platform._version import get_version
 from bhodi_platform.domain.entities import Chunk, Document, RetrievedDocument
 from bhodi_platform.domain.value_objects import ChunkId
 from bhodi_platform.ports.chunker import ChunkerPort
@@ -181,7 +182,7 @@ class BhodiApplication:
         status = "healthy" if all(services.values()) else "degraded"
         return HealthStatus(
             status=status,
-            version="1.0.0",
+            version=get_version(),
             services=services,
         )
 

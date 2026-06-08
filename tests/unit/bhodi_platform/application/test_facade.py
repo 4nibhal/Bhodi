@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from bhodi_platform._version import get_version
 from bhodi_platform.application.facade import BhodiApplication
 from bhodi_platform.application.models import IndexDocumentRequest, QueryRequest
 from bhodi_platform.domain.entities import Chunk, Document, RetrievedDocument
@@ -159,7 +160,7 @@ async def test_health_check_is_non_invasive():
     health = await app.health_check()
 
     assert health.status == "healthy"
-    assert health.version == "1.0.0"
+    assert health.version == get_version()
     assert health.services == {"embedding": True, "vector_store": True, "llm": True}
     embedding.embed_query.assert_not_called()
     vector_store.persist.assert_not_called()

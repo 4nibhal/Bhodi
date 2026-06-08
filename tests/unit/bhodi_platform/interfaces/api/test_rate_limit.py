@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from bhodi_platform._version import get_version
 from bhodi_platform.application.models import (
     HealthStatus,
     IndexDocumentResponse,
@@ -20,7 +21,7 @@ def mock_bhodi_app():
     """Provide a mocked BhodiApplication."""
     mock = AsyncMock()
     mock.health_check = AsyncMock(
-        return_value=HealthStatus(status="healthy", version="1.0.0")
+        return_value=HealthStatus(status="healthy", version=get_version())
     )
     mock.index_document = AsyncMock(
         return_value=IndexDocumentResponse(document_id="doc-123", chunk_count=5)
