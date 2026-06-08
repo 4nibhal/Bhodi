@@ -6,55 +6,44 @@
 http://localhost:8000
 ```
 
-## Overview
-
-Bhodi exposes a REST API for indexing documents and querying answers. The API is built with FastAPI and provides automatic OpenAPI documentation.
+The default bind address is `127.0.0.1:8000`. Override with `BHODI_API_HOST` / `BHODI_API_PORT` or with `bhodi-api --host / --port`.
 
 ## Authentication
 
-Currently no authentication is required. Future versions will support API key authentication.
+The API has **no authentication**. It is intended to run behind a VPN or a reverse proxy that enforces authentication. Do not expose it directly to the internet.
 
 ## Endpoints
 
-### Health Check
+### `GET /health`
 
-Check if the service is running and healthy.
-
-```
-GET /health
-```
-
-**Response:**
+Liveness and adapter-readiness probe. Calls `app.health_check()` and returns the resulting `HealthStatus` (from `bhodi_platform.application.models`). If any of `embedding`, `vector_store`, or `llm` is missing, the response is `degraded` and the server returns **HTTP 503**. The response body is the `HealthStatus` model:
 
 ```json
 {
   "status": "healthy",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "services": {
+    "embedding": true,
+    "vector_store": true,
+    "llm": true
+  }
 }
 ```
 
-**Status Codes:**
-- `200 OK` - Service is healthy
+The `/health` route is excluded from the API rate limiter.
 
 ---
 
-### Index Document
+### `POST /documents`
 
-Upload and index a document for later querying.
+Index a document for later querying. The body is an `IndexDocumentRequest` and the response is an `IndexDocumentResponse` (HTTP `201 Created` on success).
 
-```
-POST /documents
-```
-
-**Request Body:**
+**Request body**
 
 ```json
 {
-  "source": "path/to/document.pdf",
-  "metadata": {
-    "author": "John Doe",
-    "date": "2024-01-15"
-  },
+  "source": "./document.pdf",
+  "metadata": { "author": "John Doe", "date": "2024-01-15" },
   "chunk_size": 512,
   "overlap": 64
 }
@@ -62,12 +51,14 @@ POST /documents
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| source | string | Yes | - | Path to document (local file path) |
-| metadata | object | No | {} | Arbitrary metadata attached to document |
-| chunk_size | integer | No | From config | Target chunk size |
-| overlap | integer | No | From config | Overlap between chunks |
+| `source` | string | Yes | — | Path to a local document (`pdf`, `txt`, `md`, `rst`) |
+| `metadata` | object | No | `{}` | Arbitrary metadata merged into the parsed document |
+| `chunk_size` | integer | No | From config | Target chunk size in characters |
+| `overlap` | integer | No | From config | Overlap between consecutive chunks |
 
-**Response:**
+When `BHODI_API_SOURCE_ROOT` is set, the resolved path of `source` must stay within that root, and the file extension must be one of `.pdf`, `.txt`, `.md`, `.rst`. Without `BHODI_API_SOURCE_ROOT`, local file ingest via the API is rejected with HTTP 400.
+
+**Response body (201 Created)**
 
 ```json
 {
@@ -76,28 +67,25 @@ POST /documents
 }
 ```
 
-**Status Codes:**
-- `201 Created` - Document indexed successfully
-- `400 Bad Request` - Invalid request (e.g., file not found)
-- `500 Internal Server Error` - Server error
+**Status codes**
+
+- `201 Created` — document indexed successfully
+- `400 Bad Request` — invalid request (path traversal, missing file, unsupported extension, etc.)
+- `500 Internal Server Error` — unexpected server error
 
 ---
 
-### Delete Document
+### `DELETE /documents/{document_id}`
 
-Remove a document from the index.
+Remove a document and all of its chunks from the vector store.
 
-```
-DELETE /documents/{document_id}
-```
-
-**Path Parameters:**
+**Path parameters**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| document_id | string | UUID of the document to delete |
+| `document_id` | string | Document id returned by `POST /documents` |
 
-**Response:**
+**Response body (200 OK)**
 
 ```json
 {
@@ -106,22 +94,20 @@ DELETE /documents/{document_id}
 }
 ```
 
-**Status Codes:**
-- `200 OK` - Document deleted
-- `404 Not Found` - Document not found
-- `500 Internal Server Error` - Server error
+**Status codes**
+
+- `200 OK` — document deleted
+- `400 Bad Request` — invalid `document_id` value
+- `404 Not Found` — no document with that id
+- `500 Internal Server Error` — unexpected server error
 
 ---
 
-### Query
+### `POST /query`
 
-Query the indexed documents and get an answer with citations.
+Ask a question against the indexed documents. The body is a `QueryRequest`; the response is a `QueryResponse` with the generated answer and citations.
 
-```
-POST /query
-```
-
-**Request Body:**
+**Request body**
 
 ```json
 {
@@ -132,14 +118,14 @@ POST /query
 }
 ```
 
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| question | string | Yes | - | The query question |
-| conversation_id | string | No | - | Session ID for conversation continuity |
-| top_k | integer | No | 5 | Number of chunks to retrieve |
-| temperature | float | No | 0.7 | LLM temperature (0.0-2.0) |
+| Field | Type | Required | Default | Constraints | Description |
+|-------|------|----------|---------|-------------|-------------|
+| `question` | string | Yes | — | — | The question to answer |
+| `conversation_id` | string | No | `null` | — | Session id for conversation continuity |
+| `top_k` | integer | No | `5` | `1 ≤ top_k ≤ 100` | Number of chunks to retrieve |
+| `temperature` | float | No | `0.7` | `0.0 ≤ temperature ≤ 2.0` | LLM sampling temperature |
 
-**Response:**
+**Response body (200 OK)**
 
 ```json
 {
@@ -148,7 +134,7 @@ POST /query
     {
       "chunk_id": "550e8400-e29b-41d4-a716-446655440000:0",
       "text": "First paragraph of the document...",
-      "source_document": "550e8400-e29b-41d4-a716-446655440000",
+      "source_document": "manual.pdf",
       "page": 1
     }
   ],
@@ -156,28 +142,27 @@ POST /query
 }
 ```
 
-**Status Codes:**
-- `200 OK` - Query successful
-- `400 Bad Request` - Invalid request
-- `500 Internal Server Error` - Server error
+| Field | Type | Description |
+|-------|------|-------------|
+| `answer_text` | string | Generated answer |
+| `citations` | array of `CitationResponse` | Source chunks that grounded the answer |
+| `conversation_id` | string \| null | Echo of the request id, or the generated one |
+
+Each `CitationResponse` has `chunk_id` (string), `text` (truncated source text), `source_document` (filename or document id), and optional `page` (int).
+
+**Status codes**
+
+- `200 OK` — query processed
+- `400 Bad Request` — invalid request body
+- `500 Internal Server Error` — unexpected server error
 
 ---
 
-### Get Conversation History
+### `GET /conversations/{conversation_id}`
 
-Retrieve the history of a conversation session.
+Return the turns of a conversation. The response body is shaped by the route handler (it is not a generated Pydantic model):
 
-```
-GET /conversations/{conversation_id}
-```
-
-**Path Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| conversation_id | string | UUID of the conversation |
-
-**Response:**
+**Response body (200 OK)**
 
 ```json
 {
@@ -192,62 +177,46 @@ GET /conversations/{conversation_id}
 }
 ```
 
-**Status Codes:**
-- `200 OK` - History retrieved
-- `404 Not Found` - Conversation not found
-- `500 Internal Server Error` - Server error
+**Status codes**
+
+- `200 OK` — history returned (may be an empty `turns` array)
+- `400 Bad Request` — invalid `conversation_id` value
+- `500 Internal Server Error` — unexpected server error
 
 ---
 
-## Error Responses
+## Error format
 
-All errors follow a consistent format:
+All errors are returned as `{"detail": "..."}` JSON bodies, with the appropriate HTTP status code. The full set of statuses the API emits is:
 
-```json
-{
-  "detail": "Error description here"
-}
-```
+| Status | When |
+|--------|------|
+| `400` | Bad request — invalid body, invalid `document_id` / `conversation_id`, source policy violation, or missing `BHODI_API_SOURCE_ROOT` |
+| `404` | Document not found on `DELETE /documents/{document_id}` |
+| `422` | Pydantic validation error (FastAPI default) |
+| `429` | Rate limit exceeded (100 requests / 60s per IP, `/health` excluded) |
+| `500` | Unhandled internal error |
+| `503` | Health check reports a degraded adapter |
 
-| Status Code | Description |
-|-------------|--------------|
-| 400 | Bad Request - Invalid input or file not found |
-| 404 | Not Found - Document or conversation doesn't exist |
-| 422 | Validation Error - Pydantic validation failed |
-| 500 | Internal Server Error - Unexpected server error |
+## Rate limiting
 
----
+A simple in-memory limiter in `interfaces/api/app.py` enforces **100 requests per 60 seconds per client IP** on every route except `/health`. When the limit is exceeded the API returns `429 Too Many Requests` with `{"detail": "Rate limit exceeded. Try again later."}`.
 
 ## Configuration
 
-The API server can be configured via environment variables:
-
 | Variable | Default | Description |
 |----------|---------|-------------|
-| BHODI_API_HOST | 0.0.0.0 | Server host |
-| BHODI_API_PORT | 8000 | Server port |
-| OPENAI_API_KEY | - | OpenAI API key (required for OpenAI adapters) |
+| `BHODI_API_HOST` | `127.0.0.1` | API server bind host |
+| `BHODI_API_PORT` | `8000` | API server bind port |
+| `BHODI_API_SOURCE_ROOT` | unset | When set, constrains local file ingest for `POST /documents` to that directory |
+| `OPENAI_API_KEY` | — | Required when any `openai` adapter is selected |
 
-Or programmatically:
+To configure the underlying adapters (LLM, embeddings, vector store, etc.), use the `BHODI_*_PROVIDER` environment variables or instantiate `BhodiConfig` directly and pass it to `create_app(config)` from `bhodi_platform.interfaces.api.app`.
 
-```python
-from bhodi_platform.application.config import BhodiConfig
-from bhodi_platform.interfaces.api.app import create_app
+## OpenAPI documentation
 
-config = BhodiConfig(
-    embedding={"provider": "openai", "model": "text-embedding-3-small"},
-    # ... other config
-)
+When the server is running, interactive documentation is available at:
 
-app = create_app(config)
-```
-
----
-
-## OpenAPI Documentation
-
-When the server is running, interactive API documentation is available at:
-
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-- OpenAPI JSON: http://localhost:8000/openapi.json
+- Swagger UI: <http://localhost:8000/docs>
+- ReDoc: <http://localhost:8000/redoc>
+- OpenAPI JSON: <http://localhost:8000/openapi.json>

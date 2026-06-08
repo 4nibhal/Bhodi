@@ -1,315 +1,371 @@
 # Bhodi Architecture Overview
 
-## High-Level Design
+## High-level design
 
-Bhodi is a **RAG (Retrieval-Augmented Generation) framework** built with **hexagonal architecture** (also known as ports and adapters pattern).
+Bhodi is a RAG (Retrieval-Augmented Generation) framework built around **hexagonal architecture** (ports and adapters) with strict **dependency inversion**.
 
-The core principle is **dependency inversion**: domain logic doesn't depend on infrastructure - instead, infrastructure implements domain-defined interfaces.
+The central rule: domain logic never imports infrastructure. Instead, infrastructure implements domain-defined protocols. The `Container` is the only place where concrete adapter types are referenced.
+
+```mermaid
+flowchart TB
+    subgraph Interfaces["Interfaces (transport adapters)"]
+        API["FastAPI app<br/>(bhodi-api)"]
+        CLI["argparse CLIs<br/>(bhodi, bhodi-index)"]
+        TUI["Textual TUI<br/>(bhodi[tui])"]
+        Worker["Worker adapter"]
+    end
+
+    subgraph AppLayer["Application layer"]
+        Facade["BhodiApplication<br/>(facade.py)"]
+        Cfg["BhodiConfig<br/>(config.py)"]
+        DTO["Request / response models<br/>(models.py)"]
+    end
+
+    subgraph DomainLayer["Domain layer"]
+        Ent["Entities<br/>(Document, Chunk, ...)"]
+        VO["Value objects<br/>(DocumentId, ChunkId, ...)"]
+        Pol["Policies"]
+        Exc["Domain exceptions"]
+    end
+
+    subgraph PortsLayer["Ports (Protocols)"]
+        EP["EmbeddingPort"]
+        VP["VectorStorePort"]
+        CP["ChunkerPort"]
+        DP["DocumentParserPort"]
+        LP["LLMPort"]
+        CMPort["ConversationMemoryPort"]
+    end
+
+    subgraph InfraLayer["Infrastructure (adapters)"]
+        Embed["OpenAI / Mock"]
+        Store["Chroma / InMemory"]
+        Chunk["FixedSize / Recursive"]
+        Parse["PyPDF / Mock"]
+        LLM["OpenAI / Ollama / Mock"]
+        CMem["Volatile"]
+        Container["Container<br/>(composition root)"]
+    end
+
+    subgraph Cross["Cross-cutting packages"]
+        Answering["answering/"]
+        Conversation["conversation/"]
+        Evaluation["evaluation/"]
+        Indexing["indexing/"]
+        Retrieval["retrieval/"]
+    end
+
+    API --> Facade
+    CLI --> Facade
+    TUI --> Facade
+    Worker --> Facade
+
+    Facade --> EP
+    Facade --> VP
+    Facade --> CP
+    Facade --> DP
+    Facade --> LP
+    Facade --> CMPort
+
+    Facade --> Ent
+    Facade --> VO
+    Facade --> Exc
+    Facade --> Cross
+
+    Container -. wires .-> Embed
+    Container -. wires .-> Store
+    Container -. wires .-> Chunk
+    Container -. wires .-> Parse
+    Container -. wires .-> LLM
+    Container -. wires .-> CMem
+
+    Embed -. implements .-> EP
+    Store -. implements .-> VP
+    Chunk -. implements .-> CP
+    Parse -. implements .-> DP
+    LLM -. implements .-> LP
+    CMem -. implements .-> CMPort
+```
+
+---
+
+## Directory structure
+
+The real layout of `src/bhodi_platform/`:
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Interfaces Layer                          │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                     │
-│  │  FastAPI │  │   CLI    │  │  Worker  │                     │
-│  │  Server  │  │ Commands │  │  Queue   │                     │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘                     │
-└───────┼──────────────┼──────────────┼────────────────────────────┘
-        │              │              │
-        ▼              ▼              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                       Application Layer                            │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │                   BhodiApplication                        │    │
-│  │  - index_document()  - query()  - health_check()        │    │
-│  └─────────────────────────────────────────────────────────┘    │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-        ┌───────────────────┼───────────────────┐
-        │                   │                   │
-        ▼                   ▼                   ▼
-┌───────────────┐  ┌───────────────┐  ┌───────────────┐
-│     Ports     │  │     Ports     │  │     Ports     │
-│  (Protocols)  │  │  (Protocols)  │  │  (Protocols)  │
-│  EmbeddingPort  │  │VectorStorePort│  │  ChunkerPort  │
-└───────┬───────┘  └───────┬───────┘  └───────┬───────┘
-        │                   │                   │
-        ▼                   ▼                   ▼
-┌───────────────┐  ┌───────────────┐  ┌───────────────┐
-│ Infrastructure│  │ Infrastructure│  │ Infrastructure│
-│    Adapters   │  │    Adapters   │  │    Adapters   │
-│   OpenAI,     │  │   Chroma,      │  │  FixedSize,   │
-│   Local       │  │   InMemory    │  │  Recursive    │
-└───────────────┘  └───────────────┘  └───────────────┘
+src/bhodi_platform/
+├── domain/                     # Pure business logic (no I/O, no infra imports)
+│   ├── entities.py             # Document, Chunk, RetrievedDocument, ...
+│   ├── value_objects.py        # DocumentId, ChunkId, ConversationId, ...
+│   ├── policies.py
+│   ├── services.py
+│   └── exceptions.py
+│
+├── application/                # Use cases and orchestration
+│   ├── config.py               # BhodiConfig + per-component Pydantic configs
+│   ├── facade.py               # BhodiApplication (main entry point)
+│   └── models.py               # IndexDocumentRequest/Response, QueryRequest/Response, HealthStatus, ...
+│
+├── ports/                      # Abstract dependencies (typing.Protocol)
+│   ├── embedding.py
+│   ├── vector_store.py
+│   ├── chunker.py
+│   ├── document_parser.py
+│   ├── llm.py
+│   ├── conversation_memory.py
+│   ├── answering.py
+│   └── indexing.py
+│
+├── infrastructure/             # Concrete adapters + composition root
+│   ├── container.py            # Container (DI wiring; the only place that knows concrete types)
+│   ├── embedding/              # openai.py, mock.py
+│   ├── vector_store/           # chroma.py, in_memory.py
+│   ├── chunker/                # fixed_size.py, recursive.py
+│   ├── document_parser/        # pypdf.py, mock.py
+│   ├── llm/                    # openai.py, ollama.py, mock.py
+│   └── conversation_memory/    # volatile.py
+│
+├── interfaces/                 # Transport adapters
+│   ├── api/                    # FastAPI app, server, routes (health, indexing, query)
+│   ├── cli/                    # argparse commands (main, indexing, query)
+│   ├── tui/                    # Textual chat client (requires bhodi[tui])
+│   └── worker/                 # Background worker adapter
+│
+├── answering/                  # Generation engine and collaborators
+├── conversation/               # Conversation infrastructure and runtime
+├── evaluation/                 # Fixtures, runner, scoring, thresholds
+├── indexing/                   # Higher-level indexing pipeline helpers
+└── retrieval/                  # Retrieval runtime and settings
 ```
 
-## Directory Structure
+Two transitional surfaces still live in the tree:
 
-```
-bhodi_platform/
-├── domain/                    # Pure business logic
-│   ├── entities.py           # Document, Chunk, Query, Answer, ConversationTurn
-│   ├── value_objects.py      # DocumentId, ChunkId, ConversationId, Citation
-│   ├── services.py           # Domain services (optional)
-│   └── exceptions.py        # Domain exceptions
-│
-├── application/             # Use cases and orchestration
-│   ├── config.py            # Pydantic configuration models
-│   ├── facade.py            # BhodiApplication (main entry point)
-│   ├── indexing.py         # IndexDocumentUseCase
-│   ├── query.py            # QueryAnswerUseCase
-│   └── models.py          # Request/Response DTOs
-│
-├── ports/                   # Abstract interfaces (Protocols)
-│   ├── embedding.py         # EmbeddingPort
-│   ├── vector_store.py      # VectorStorePort
-│   ├── chunker.py          # ChunkerPort
-│   ├── document_parser.py   # DocumentParserPort
-│   ├── llm.py              # LLMPort
-│   └── conversation_memory.py  # ConversationMemoryPort
-│
-├── infrastructure/         # Concrete implementations
-│   ├── container.py         # Dependency injection
-│   ├── telemetry.py         # OpenTelemetry setup
-│   ├── tracing.py          # @traced decorator
-│   ├── embedding/          # OpenAI, Local, Mock
-│   ├── vector_store/       # Chroma, InMemory
-│   ├── document_parser/    # PyPDF, Mock
-│   ├── chunker/           # FixedSize, Recursive
-│   ├── llm/               # OpenAI, Ollama, Mock
-│   └── conversation_memory/  # Volatile, Persistent
-│
-└── interfaces/             # Transport adapters
-    ├── api/               # FastAPI server
-    │   ├── app.py         # App factory
-    │   └── routes/        # Route handlers
-    └── cli/               # CLI commands
-```
+- `src/bhodi_doc_analyzer/` — package root and `bhodi_doc_analyzer.config` are intentionally supported; other symbols are being retired.
+- `src/indexer/` — legacy indexing shims that delegate into `bhodi_platform.indexing`.
 
-## Core Concepts
+New work belongs in `src/bhodi_platform/`.
 
-### 1. Domain Layer
+---
 
-The domain layer contains **pure business logic** with no external dependencies:
+## Core concepts
 
-- **Entities**: `Document`, `Chunk`, `Query`, `Answer`, `ConversationTurn`
-- **Value Objects**: `DocumentId`, `ChunkId`, `ConversationId`, `Citation`, `EmbeddingVector`
-- **Exceptions**: Domain-specific errors
+### Domain layer
 
-Rules:
-- Zero imports from other bhodi_platform layers
-- Zero external dependencies (no langchain, chromadb, etc.)
-- All validation in `__post_init__` methods
+Pure business logic. Zero imports from other `bhodi_platform` layers, zero external runtime dependencies (no `langchain`, no `chromadb`, no `httpx`).
 
-### 2. Ports (Interfaces)
+- **Entities** — `Document`, `Chunk`, `RetrievedDocument`, `ConversationTurn`, ...
+- **Value objects** — `DocumentId`, `ChunkId`, `ConversationId`, `Citation`, `EmbeddingVector`, ...
+- **Policies / services** — domain rules that do not naturally live on a single entity.
+- **Exceptions** — domain-specific errors that the interfaces layer maps to HTTP status codes.
 
-Ports define **what** the domain needs, not **how** it's implemented:
+### Ports (interfaces)
+
+Ports define **what** the application needs from the outside world, not **how** it is implemented. Each port is a `typing.Protocol`:
 
 ```python
+from typing import Protocol
+
 class EmbeddingPort(Protocol):
-    """Protocol for embedding generation."""
-    
     async def embed_documents(self, texts: list[str]) -> list[list[float]]: ...
     async def embed_query(self, text: str) -> list[float]: ...
-    async def dimensions(self) -> int: ...
 ```
 
-Using `Protocol` instead of `ABC` allows structural typing - any class with these methods fulfills the contract.
+`Protocol` gives structural typing: any class that implements the methods satisfies the contract — no inheritance coupling, and mock adapters in tests fit naturally.
 
-### 3. Adapters (Infrastructure)
+### Adapters (infrastructure)
 
-Adapters implement ports with concrete technology:
+Adapters implement the ports against concrete technology. Each adapter lives in its own module under `infrastructure/<component>/` and accepts a typed config object in its constructor.
 
 ```python
 class OpenAIEmbeddingsAdapter:
-    """OpenAI implementation of EmbeddingPort."""
-    
     def __init__(self, config: EmbeddingConfig) -> None:
         self._config = config
-    
+        self._client = None  # Lazy: created on first use, never at import time
+
     async def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        # Call OpenAI API
         ...
 ```
 
-### 4. Dependency Injection
+Lazy initialization keeps health checks fast and avoids import-time side effects (no model downloads, no network calls, no vector-store creation).
 
-The `Container` wires ports to adapters based on configuration:
+### Container (composition root)
+
+`bhodi_platform.infrastructure.container.Container` is the only place that knows about concrete adapter types. It maps a `BhodiConfig` to a fully-wired `BhodiApplication`:
 
 ```python
+from bhodi_platform.application.config import BhodiConfig
+from bhodi_platform.infrastructure.container import Container
+
 config = BhodiConfig(
     embedding={"provider": "openai", "model": "text-embedding-3-small"},
-    vector_store={"provider": "chroma"},
+    vector_store={"provider": "chroma", "persist_directory": "./data/chroma"},
+    llm={"provider": "openai", "model": "gpt-4o-mini"},
 )
 
-container = Container(config)
-app = container.build()  # Returns BhodiApplication with adapters wired
+app = Container(config).build()  # BhodiApplication with all adapters wired
 ```
 
-## Data Flow
+The container caches adapter instances per process, builds the facade once, and never triggers adapter initialization on import.
 
-### Indexing Pipeline
+---
+
+## Data flow
+
+### Indexing pipeline
 
 ```
-User Upload (PDF)
-    │
-    ▼
-DocumentParserPort.parse()
-    │
-    ▼
-Document (text + metadata)
-    │
-    ▼
-ChunkerPort.chunk()
-    │
-    ▼
-List[Chunk]
-    │
-    ▼
-EmbeddingPort.embed_documents()
-    │
-    ▼
+IndexDocumentRequest (source, metadata, chunk_size, overlap)
+        │
+        ▼
+DocumentParserPort.parse(source)                ── PyPDF / Mock
+        │
+        ▼
+Document (text + metadata) + DocumentId
+        │
+        ▼
+ChunkerPort.chunk(text, chunk_size, overlap)     ── FixedSize / Recursive
+        │
+        ▼
+List[Chunk]  (chunks rebound to a new document_id space)
+        │
+        ▼
+EmbeddingPort.embed_documents([chunk.content])  ── OpenAI / Mock
+        │
+        ▼
 List[Tuple[Chunk, EmbeddingVector]]
-    │
-    ▼
-VectorStorePort.add()
-    │
-    ▼
-Persisted Index
+        │
+        ▼
+VectorStorePort.add(chunks, embeddings)          ── Chroma / InMemory
+        │
+        ▼
+IndexDocumentResponse(document_id, chunk_count)
 ```
 
-### Query Pipeline
+### Query pipeline
 
 ```
-User Query
-    │
-    ▼
-EmbeddingPort.embed_query()
-    │
-    ▼
-EmbeddingVector
-    │
-    ▼
-VectorStorePort.search()
-    │
-    ▼
-List[RetrievedDocument] (ranked)
-    │
-    ▼
-LLMPort.generate_with_context()
-    │
-    ▼
-Answer (with Citations)
-    │
-    ▼
-Response
+QueryRequest (question, conversation_id?, top_k, temperature)
+        │
+        ▼
+EmbeddingPort.embed_query(question)             ── OpenAI / Mock
+        │
+        ▼
+VectorStorePort.search(embedding, top_k)         ── Chroma / InMemory
+        │
+        ▼
+List[RetrievedDocument]  (ranked)
+        │
+        ▼
+LLMPort.generate_with_context(question, retrieved, temperature)
+        │                                       ── OpenAI / Ollama / Mock
+        ▼
+QueryResponse(answer_text, citations[], conversation_id)
 ```
+
+---
 
 ## Configuration
 
-All configuration is Pydantic-based:
+`BhodiConfig` is the single source of truth for runtime behavior. It is built from typed Pydantic sub-configs (one per port), each of which exposes a `provider` string and an `extra: dict` for provider-specific keys.
 
 ```python
-class EmbeddingConfig(BaseModel):
-    provider: str
-    model: str | None = None
-    dimensions: int | None = None
-    batch_size: int = 100
-    extra: dict[str, Any] = {}
+class BhodiConfig(BaseModel):
+    parser: DocumentParserConfig       # default: provider="pypdf"
+    chunker: ChunkerConfig             # default: provider="recursive"
+    embedding: EmbeddingConfig         # default: provider="openai"
+    vector_store: VectorStoreConfig    # default: provider="chroma"
+    llm: LLMConfig                     # default: provider="openai"
+    conversation: ConversationConfig   # default: provider="volatile"
+    telemetry: TelemetryConfig         # default: enabled=True, exporter="console"
 ```
 
-Provider-specific config goes in `extra`:
+`BHODI_PARSER_PROVIDER`, `BHODI_CHUNKER_PROVIDER`, `BHODI_EMBEDDING_PROVIDER`, `BHODI_VECTOR_STORE_PROVIDER`, `BHODI_LLM_PROVIDER`, and `BHODI_CONVERSATION_PROVIDER` override the default `provider` for the matching sub-config. API-server-specific variables (`BHODI_API_HOST`, `BHODI_API_PORT`, `BHODI_API_SOURCE_ROOT`) are consumed by the `interfaces/api` layer, not by `BhodiConfig`.
+
+Provider-specific options go in `extra`:
 
 ```python
-config = EmbeddingConfig(
-    provider="ollama",
-    model="llama3.2",
-    extra={"base_url": "http://localhost:11434"}
-)
+LLMConfig(provider="ollama", model="llama3.2",
+          extra={"base_url": "http://localhost:11434"})
 ```
 
-## Key Design Decisions
+---
 
-### 1. Protocol-Based Ports
+## Key design decisions
 
-Using `Protocol` instead of `ABC`:
-- **Pros**: Structural typing, no inheritance coupling, easier testing
-- **Cons**: IDE autocomplete less precise (but improving)
+### Protocol-based ports
 
-### 2. Async-First
+Using `typing.Protocol` instead of `abc.ABC`:
 
-All port methods are async:
-- Non-blocking I/O for better concurrency
-- Adapter can wrap sync libraries with `asyncio.to_thread()`
+- **Structural typing** — any class with the right methods satisfies the port; no inheritance coupling.
+- **Trivial mocking** — tests can implement protocols with small fakes.
+- **No import-time side effects** — there is no metaclass-driven registration.
 
-### 3. Lazy Initialization
+### Async-first
 
-Models loaded on first use, not at import:
-- Fast startup for health checks
-- Resources allocated only when needed
+All port methods are `async`. Adapters that wrap synchronous libraries (for example, `chromadb` and `pypdf`) are expected to use `asyncio.to_thread()` or equivalent so the event loop is never blocked.
 
-### 4. No Hardcoded Values
+### Lazy initialization
 
-All configuration via Pydantic models:
-- Environment-driven
-- Type-safe
-- Validated at startup
+Adapters build their underlying clients on first use, not at import or container construction. The trade-off is intentional:
 
-### 5. Citation Format
+- Health checks stay under 50 ms.
+- The `Container` does not allocate GPU or open network connections.
+- Process startup cost is bounded by the application shell, not the adapter set.
 
-Citations are segment-based:
+### No hardcoded values
+
+There are no model names, temperatures, chunk sizes, paths, or URLs in source. Every value lives in a Pydantic config model and is overridable via constructor argument or environment variable. `BhodiConfig` uses `model_config = ConfigDict(extra="ignore")` so partial overrides do not fail.
+
+### Citation format
+
+Citations are returned per retrieved chunk and always preserve source identity:
 
 ```python
-class Citation:
-    chunk_id: ChunkId
-    text: str           # Source text
-    source_document: str # Filename or ID
-    page: int | None    # Page number if available
+class CitationResponse(BaseModel):
+    chunk_id: str
+    text: str            # truncated source text
+    source_document: str # filename if known, else the document id
+    page: int | None     # page number if the parser reported one
 ```
 
-Adapter pattern allows other formats if needed.
+This format is stable across adapters; alternative shapes are introduced by adding fields, not by changing existing ones.
 
-## Testing Strategy
+### Cross-cutting packages
 
-### Unit Tests
-- Domain logic with no mocks
-- Pure Python assertions
+`answering/`, `conversation/`, `evaluation/`, `indexing/`, and `retrieval/` are first-party packages that build on top of the core `domain → application → ports → infrastructure` stack. They are part of the shipped product surface, not optional plugins.
 
-### Contract Tests
-- Verify adapter fulfills Protocol
-- Runtime type checking
+---
 
-### Integration Tests
-- Real adapters with local services (embedded Chroma)
-- No external API calls
+## Testing strategy
 
-### E2E Tests
-- Full pipeline with mock adapters
-- No API keys required
+- **Unit tests** — domain logic and pure utilities, no mocks required.
+- **Contract tests** — verify that each adapter satisfies its port's `Protocol`; mocking at the port boundary.
+- **Integration tests** — real adapters against local services (e.g. embedded Chroma or `in_memory` stores); no external API calls.
+- **End-to-end tests** — full pipeline with mock adapters so the suite runs offline.
+
+---
 
 ## Telemetry
 
-OpenTelemetry spans for observability:
+`BhodiConfig.telemetry` controls OpenTelemetry behavior. The default exporter is `console`; install `bhodi[telemetry]` and set `exporter="otlp"` with `otlp_endpoint` to ship traces to a collector. The application layer adds spans for the major pipeline stages (`indexing.parse`, `indexing.chunk`, `indexing.embed`, `indexing.store`, `query.embed`, `query.search`, `query.generate`) with attributes for `provider`, `model`, and `document_id` / `query_id` where available.
 
-```python
-from bhodi_platform.infrastructure.tracing import traced
-
-@traced("custom.operation")
-async def my_operation(self):
-    ...
-```
-
-Spans include:
-- Operation name
-- Provider/model attributes
-- Duration
+---
 
 ## Extensibility
 
-Adding a new adapter:
+Adding a new adapter for an existing port:
 
-1. Create adapter in `infrastructure/<adapter_type>/`
-2. Implement the port Protocol
-3. Register in `Container._create_<adapter_type>_adapter()`
-4. Add tests
+1. Create `src/bhodi_platform/infrastructure/<component>/<provider>.py` and implement the matching `Protocol`.
+2. Accept a typed config object in the constructor; read provider-specific options from `extra`.
+3. Register the provider in `Container._create_<component>_adapter()`.
+4. Add a mock and a contract test.
 
-No modification to domain or application layers required.
+Adding a brand-new port:
+
+1. Define the `Protocol` under `src/bhodi_platform/ports/`.
+2. Add a sub-config to `BhodiConfig`.
+3. Add a field on `BhodiApplication` and a corresponding adapter directory.
+4. Wire it through `Container.build()`.
+
+Neither the domain layer nor the existing interfaces need to change.
