@@ -13,33 +13,35 @@ requires-python = ">=3.11"
 dependencies = [
     # Web framework
     "fastapi==0.136.3",
-    # starlette pinned >=1.0.1 to fix transitive CVEs:
+    # starlette pinned at 1.2.1 to address transitive CVEs:
     # - PYSEC-2026-161 / CVE-2026-48710 (requires 1.0.1)
     # - CVE-2025-54121 (fixed in 0.47.2)
     # - CVE-2025-62727 (fixed in 0.49.1)
-    # All discovered by pip-audit in PR #0. FastAPI 0.133+ supports starlette >=1.0.0.
-    "starlette>=1.0.1,<2.0.0",
+    # FastAPI 0.133+ supports starlette >=1.0.0. Bump only after auditing
+    # FastAPI's starlette upper bound and any new advisories.
+    "starlette==1.2.1",
     "uvicorn[standard]==0.49.0",
 
     # Data validation
     "pydantic==2.13.4",
 
     # Document parsing
-    "pypdf==6.12.2",
+    "pypdf==6.13.0",
 
     # HTTP client
     "httpx==0.28.1",
-    "aiohttp==3.14.0",
+    "aiohttp==3.14.1",
 
-    # chromadb pinned at 0.5.23 — DO NOT BUMP to 1.x
-    # CVE-2026-45829 (GHSA-f4j7-r4q5-qw2c, 9.3 Critical pre-auth code injection)
-    # affects 1.0.0–1.5.9 (no fix available as of 2026-06-05).
-    # Merging Dependabot PR #22 would INTRODUCE the vulnerability.
-    # Mitigations: ensure chromadb server runs behind reverse-proxy auth
-    # (documented in README). For Python server backend, switch to Rust-based
-    # chroma run/Docker image. Track upstream issue #6717 for 1.5.10+ fix.
+    # chromadb pinned at 1.5.9. CVE-2026-45829 (GHSA-f4j7-r4q5-qw2c, 9.3
+    # Critical pre-auth code injection) affects the Python FastAPI *server*
+    # in 1.0.0-1.5.9. Bhodi only uses `chromadb.PersistentClient` (embedded
+    # mode) in `src/bhodi_platform/infrastructure/vector_store/chroma.py`,
+    # which never executes the vulnerable code path. The standalone
+    # `chromadb/chroma` server image is no longer pulled by
+    # `podman-compose.yml`. Bump to >=1.5.10 only after the upstream fix
+    # lands and we re-audit.
     # ChromaDB for vector storage
-    "chromadb==0.5.23",
+    "chromadb==1.5.9",
 
     # OpenAI client
     "openai==2.41.0",
@@ -51,7 +53,7 @@ dependencies = [
 [project.optional-dependencies]
 # Local LLM support (Ollama, llama.cpp)
 local-llm = [
-    "llama-cpp-python==0.3.26",
+    "llama-cpp-python==0.3.28",
     "ollama==0.6.2",
 ]
 

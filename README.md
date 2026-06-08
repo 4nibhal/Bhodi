@@ -310,7 +310,7 @@ config = BhodiConfig(
 | Component | Providers | Notes |
 |-----------|-----------|-------|
 | **Embeddings** | `openai`, `mock` | OpenAI requires `OPENAI_API_KEY`; mock is deterministic and offline |
-| **Vector store** | `chroma` (persistent, on-disk), `in_memory` | Chroma uses `chromadb==0.5.23` (pinned — see Security note below) |
+| **Vector store** | `chroma` (persistent, on-disk), `in_memory` | Chroma uses `chromadb==1.5.9` in embedded mode (see Security note below) |
 | **LLM** | `openai`, `ollama`, `mock` | Ollama needs a local server (`ollama serve`) |
 | **Chunker** | `fixed_size`, `recursive` | Recursive uses character separators |
 | **Document parser** | `pypdf`, `mock` | PDF text extraction via PyPDF |
@@ -318,7 +318,7 @@ config = BhodiConfig(
 
 Swap adapters by changing the `provider` field. No code changes are required; the `Container` rewires everything.
 
-> **Security note (ChromaDB pinning).** The Python client pins `chromadb==0.5.23` because 1.0.0–1.5.9 are affected by CVE-2026-45829 (a critical pre-auth code injection, no upstream fix as of 2026-06-05). Track upstream issue #6717 for a 1.5.10+ fix. If you run the standalone Chroma service from `podman-compose.yml`, put it behind a reverse proxy with authentication.
+> **Security note (ChromaDB pinning).** We pin `chromadb==1.5.9`. The server-side CVE-2026-45829 (CVSS 9.3, pre-auth code injection) affects 1.0.0–1.5.9, but Bhodi only uses `chromadb.PersistentClient` in embedded mode (`src/bhodi_platform/infrastructure/vector_store/chroma.py`), which never executes the vulnerable code path. We do not deploy the standalone `chromadb/chroma` server. Track upstream issue #6717 for the 1.5.10+ fix.
 
 ---
 
@@ -349,7 +349,7 @@ podman build -f Containerfile -t bhodi .
 podman run -p 8000:8000 -e OPENAI_API_KEY="sk-..." bhodi
 ```
 
-The compose stack starts two services: a `bhodi-api` container built locally from the `Containerfile`, and a standalone `chromadb/chroma:latest` vector store on port `8080` with data in the `chroma-data` named volume.
+The compose stack runs a single `bhodi-api` container built locally from the `Containerfile`. ChromaDB runs in embedded mode inside the same process; no separate vector-store container is used.
 
 > **Warning:** The API has **no authentication**. Only deploy behind a VPN, reverse proxy with auth, or similar. Do not expose directly to the internet.
 

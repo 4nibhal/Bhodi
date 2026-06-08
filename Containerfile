@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.11-slim AS builder
+FROM python:3.11-slim-bookworm AS builder
 
 # Install build dependencies for native packages (numpy, pypdf, etc.)
 RUN apt-get update \
@@ -7,7 +7,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv (Astral's Python package manager)
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.19 /uv /uvx /bin/
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ RUN uv sync --frozen --no-dev
 # ------------------------------------------------------------------------------
 # Runtime stage
 # ------------------------------------------------------------------------------
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
 # Create a non-privileged user (UID 1000)
 RUN useradd --create-home --uid 1000 --shell /bin/bash bhodi
