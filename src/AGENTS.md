@@ -13,11 +13,10 @@ metadata:
 # Rules: Product Source
 
 ## Context & Responsibility
-This scope governs all shipped product code under `src/`. Bhodi is evolving from a legacy TUI-first codebase into a modular backend platform.
+This scope governs all shipped product code under `src/`. Bhodi is a modular backend platform organized around the `bhodi_platform` package.
 
 ## Operational Standards
 - Put new core logic under `src/bhodi_platform/`.
-- Treat `src/bhodi_doc_analyzer/` and `src/indexer/` as legacy compatibility surfaces unless a task is explicitly modernizing them.
 - Eliminate import-time side effects and global singleton ownership.
 - Use typed settings, explicit factories, and dependency inversion boundaries.
 - Keep filesystem paths, model selection, and device configuration environment-driven.

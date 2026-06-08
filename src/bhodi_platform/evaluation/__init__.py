@@ -1,8 +1,4 @@
 from bhodi_platform.evaluation.budget import BudgetValidator
-from bhodi_platform.evaluation.defaults import (
-    DEFAULT_GROUNDING_THRESHOLDS,
-    DEFAULT_RETRIEVAL_THRESHOLDS,
-)
 from bhodi_platform.evaluation.loader import load_fixture
 from bhodi_platform.evaluation.models import (
     EvaluationFixture,
@@ -10,7 +6,6 @@ from bhodi_platform.evaluation.models import (
     RetrievedArtifact,
     RetrievalCase,
 )
-from bhodi_platform.evaluation.runner import EvaluationRunner
 from bhodi_platform.evaluation.scoring import (
     GroundingCaseScore,
     GroundingSuiteScore,
@@ -29,11 +24,8 @@ from bhodi_platform.evaluation.thresholds import (
 
 __all__ = [
     "BudgetValidator",
-    "DEFAULT_GROUNDING_THRESHOLDS",
-    "DEFAULT_RETRIEVAL_THRESHOLDS",
     "EvaluationBudget",
     "EvaluationFixture",
-    "EvaluationRunner",
     "GroundingCase",
     "GroundingCaseScore",
     "GroundingSuiteScore",

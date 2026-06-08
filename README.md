@@ -49,7 +49,6 @@ pipx install bhodi
 | Extra | Install command | What it adds |
 |-------|-----------------|--------------|
 | `bhodi[local-llm]` | `uv tool install bhodi --with bhodi[local-llm]` | `llama-cpp-python==0.3.26`, `ollama==0.6.2` |
-| `bhodi[tui]` | `uv tool install bhodi --with bhodi[tui]` | `textual==8.2.7` (Textual TUI) |
 | `bhodi[telemetry]` | `uv tool install bhodi --with bhodi[telemetry]` | `opentelemetry-api/sdk/exporter-otlp==1.42.1` |
 | `bhodi[all]` | `uv tool install bhodi --with bhodi[all]` | All of the above |
 
@@ -57,7 +56,7 @@ With pipx:
 
 ```bash
 pipx install bhodi
-pipx inject bhodi bhodi[local-llm]    # or bhodi[tui], bhodi[telemetry], bhodi[all]
+pipx inject bhodi bhodi[local-llm]    # or bhodi[telemetry], bhodi[all]
 ```
 
 > **Why uv/pipx instead of pip?** `uv tool install` and `pipx install` install Bhodi in an isolated environment, avoiding dependency conflicts with your system Python or other projects.
@@ -178,7 +177,6 @@ flowchart TB
     subgraph Interfaces["Interfaces (adapters)"]
         API["FastAPI app<br/>(bhodi-api)"]
         CLI["argparse CLIs<br/>(bhodi, bhodi-index)"]
-        TUI["Textual TUI<br/>(bhodi[tui])"]
         Worker["Worker adapter"]
     end
 
@@ -214,16 +212,11 @@ flowchart TB
     end
 
     subgraph Cross["Cross-cutting"]
-        Answering["answering/"]
-        Conversation["conversation/"]
         Evaluation["evaluation/"]
-        Indexing["indexing/"]
-        Retrieval["retrieval/"]
     end
 
     API --> Facade
     CLI --> Facade
-    TUI --> Facade
     Worker --> Facade
 
     Facade --> EP
@@ -319,17 +312,6 @@ config = BhodiConfig(
 Swap adapters by changing the `provider` field. No code changes are required; the `Container` rewires everything.
 
 > **Security note (ChromaDB pinning).** We pin `chromadb==1.5.9`. The server-side CVE-2026-45829 (CVSS 9.3, pre-auth code injection) affects 1.0.0–1.5.9, but Bhodi only uses `chromadb.PersistentClient` in embedded mode (`src/bhodi_platform/infrastructure/vector_store/chroma.py`), which never executes the vulnerable code path. We do not deploy the standalone `chromadb/chroma` server. Track upstream issue #6717 for the 1.5.10+ fix.
-
----
-
-## Legacy compatibility
-
-Two transitional surfaces are still in the tree while downstream code migrates:
-
-- `src/bhodi_doc_analyzer/` — only the package root and `bhodi_doc_analyzer.config` are intentionally supported; everything else is in the process of being retired.
-- `src/indexer/` — legacy indexing shims that delegate into `bhodi_platform.indexing`.
-
-New work belongs in `src/bhodi_platform/`. The legacy packages are not feature-complete and should not be used for greenfield code.
 
 ---
 

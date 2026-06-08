@@ -26,7 +26,7 @@ This scope defines the target backend architecture for Bhodi. It is the preferre
 - Backend modules must not import TUI-specific code.
 - Retrieval and generation flows must preserve source metadata and support citations.
 - Any RAG change must define how it will be evaluated.
-- Services must be composable for API, CLI, worker, and TUI consumers.
+- Services must be composable for API and CLI consumers.
 
 ## Capability Graph
 - @skill/legacy-modernization
@@ -43,5 +43,4 @@ This scope defines the target backend architecture for Bhodi. It is the preferre
 | `src/bhodi_platform/domain/` | [src/bhodi_platform/domain/AGENTS.md](/src/bhodi_platform/domain/AGENTS.md) |
 | `src/bhodi_platform/infrastructure/` | [src/bhodi_platform/infrastructure/AGENTS.md](/src/bhodi_platform/infrastructure/AGENTS.md) |
 | `src/bhodi_platform/interfaces/` | [src/bhodi_platform/interfaces/AGENTS.md](/src/bhodi_platform/interfaces/AGENTS.md) |
-| `src/bhodi_platform/interfaces/tui/` | [src/bhodi_platform/interfaces/tui/AGENTS.md](/src/bhodi_platform/interfaces/tui/AGENTS.md) |
 | `src/bhodi_platform/ports/` | [src/bhodi_platform/ports/AGENTS.md](/src/bhodi_platform/ports/AGENTS.md) |
