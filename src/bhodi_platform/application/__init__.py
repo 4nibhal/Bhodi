@@ -13,9 +13,7 @@ from bhodi_platform.application.models import (
 )
 
 __all__ = [
-    "AnswerQueryUseCase",
     "BhodiApplication",
-    "BhodiRuntime",
     "CitationResponse",
     "HealthStatus",
     "IndexDocumentRequest",
@@ -28,17 +26,9 @@ __all__ = [
 ]
 
 _EXPORTS = {
-    "AnswerQueryUseCase": (
-        "bhodi_platform.application.answer_query",
-        "AnswerQueryUseCase",
-    ),
     "BhodiApplication": (
         "bhodi_platform.application.facade",
         "BhodiApplication",
-    ),
-    "BhodiRuntime": (
-        "bhodi_platform.application.runtime",
-        "BhodiRuntime",
     ),
     "IndexDocumentsUseCase": (
         "bhodi_platform.application.index_documents",
@@ -47,10 +37,8 @@ _EXPORTS = {
 }
 
 if TYPE_CHECKING:
-    from bhodi_platform.application.answer_query import AnswerQueryUseCase
     from bhodi_platform.application.facade import BhodiApplication
     from bhodi_platform.application.index_documents import IndexDocumentsUseCase
-    from bhodi_platform.application.runtime import BhodiRuntime
 
 
 def __getattr__(name: str) -> Any:

@@ -34,8 +34,7 @@ Use cases and orchestration logic. This layer sits between domain and infrastruc
 - `BhodiConfig`: Root configuration aggregating all sub-configs
 
 ### Use Cases (`application/*.py`)
-- `IndexDocumentUseCase`: Orchestrates document indexing pipeline
-- `QueryAnswerUseCase`: Orchestrates query-answering pipeline
+- `IndexDocumentsUseCase`: Orchestrates document indexing pipeline
 - `BhodiApplication` (facade): Main entry point combining all use cases
 
 ### Request/Response Models (`application/models.py`)
