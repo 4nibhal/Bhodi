@@ -32,6 +32,8 @@ Liveness and adapter-readiness probe. Calls `app.health_check()` and returns the
 
 The `/health` route is excluded from the API rate limiter.
 
+> **Version drift (known issue).** The `version` field in the `/health` response is hard-coded to `"1.0.0"` in two places: `src/bhodi_platform/application/facade.py` (the `BhodiApplication.health_check` method) and `src/bhodi_platform/interfaces/api/app.py` (the route handler). The actual package version in `pyproject.toml` is `0.1.0`. The discrepancy is tracked and will be fixed in a follow-up that wires the response to the package's installed `__version__`.
+
 ---
 
 ### `POST /documents`
@@ -53,8 +55,8 @@ Index a document for later querying. The body is an `IndexDocumentRequest` and t
 |-------|------|----------|---------|-------------|
 | `source` | string | Yes | — | Path to a local document (`pdf`, `txt`, `md`, `rst`) |
 | `metadata` | object | No | `{}` | Arbitrary metadata merged into the parsed document |
-| `chunk_size` | integer | No | From config | Target chunk size in characters |
-| `overlap` | integer | No | From config | Overlap between consecutive chunks |
+| `chunk_size` | integer | No | From chunker adapter (default 512) | Target chunk size in characters |
+| `overlap` | integer | No | From chunker adapter (default 64) | Overlap between consecutive chunks |
 
 When `BHODI_API_SOURCE_ROOT` is set, the resolved path of `source` must stay within that root, and the file extension must be one of `.pdf`, `.txt`, `.md`, `.rst`. Without `BHODI_API_SOURCE_ROOT`, local file ingest via the API is rejected with HTTP 400.
 
