@@ -44,6 +44,11 @@ jobs:
       - name: Run full test suite (includes tests/evals)
         run: uv run pytest
 
+      - name: Prune stale bytecode
+        run: |
+          find tests src -type d -name __pycache__ -prune -exec rm -rf {} +
+          find . -name '*.pyc' -delete
+
       - name: Verify source compilation
         run: uv run python -m compileall src tests
 
