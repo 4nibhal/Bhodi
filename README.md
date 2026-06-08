@@ -49,7 +49,6 @@ pipx install bhodi
 | Extra | Install command | What it adds |
 |-------|-----------------|--------------|
 | `bhodi[local-llm]` | `uv tool install bhodi --with bhodi[local-llm]` | `llama-cpp-python==0.3.26`, `ollama==0.6.2` |
-| `bhodi[tui]` | `uv tool install bhodi --with bhodi[tui]` | `textual==8.2.7` (Textual TUI) |
 | `bhodi[telemetry]` | `uv tool install bhodi --with bhodi[telemetry]` | `opentelemetry-api/sdk/exporter-otlp==1.42.1` |
 | `bhodi[all]` | `uv tool install bhodi --with bhodi[all]` | All of the above |
 
@@ -57,7 +56,7 @@ With pipx:
 
 ```bash
 pipx install bhodi
-pipx inject bhodi bhodi[local-llm]    # or bhodi[tui], bhodi[telemetry], bhodi[all]
+pipx inject bhodi bhodi[local-llm]    # or bhodi[telemetry], bhodi[all]
 ```
 
 > **Why uv/pipx instead of pip?** `uv tool install` and `pipx install` install Bhodi in an isolated environment, avoiding dependency conflicts with your system Python or other projects.
@@ -178,7 +177,6 @@ flowchart TB
     subgraph Interfaces["Interfaces (adapters)"]
         API["FastAPI app<br/>(bhodi-api)"]
         CLI["argparse CLIs<br/>(bhodi, bhodi-index)"]
-        TUI["Textual TUI<br/>(bhodi[tui])"]
         Worker["Worker adapter"]
     end
 
@@ -223,7 +221,6 @@ flowchart TB
 
     API --> Facade
     CLI --> Facade
-    TUI --> Facade
     Worker --> Facade
 
     Facade --> EP

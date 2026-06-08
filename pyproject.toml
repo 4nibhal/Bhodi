@@ -57,11 +57,6 @@ local-llm = [
     "ollama==0.6.2",
 ]
 
-# Textual TUI
-tui = [
-    "textual==8.2.7",
-]
-
 # OpenTelemetry instrumentation
 telemetry = [
     "opentelemetry-api==1.42.1",
@@ -71,7 +66,7 @@ telemetry = [
 
 # All optional dependencies
 all = [
-    "bhodi[local-llm,tui,telemetry]",
+    "bhodi[local-llm,telemetry]",
 ]
 
 [project.scripts]

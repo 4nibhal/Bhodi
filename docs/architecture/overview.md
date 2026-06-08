@@ -11,7 +11,6 @@ flowchart TB
     subgraph Interfaces["Interfaces (transport adapters)"]
         API["FastAPI app<br/>(bhodi-api)"]
         CLI["argparse CLIs<br/>(bhodi, bhodi-index)"]
-        TUI["Textual TUI<br/>(bhodi[tui])"]
         Worker["Worker adapter"]
     end
 
@@ -57,7 +56,6 @@ flowchart TB
 
     API --> Facade
     CLI --> Facade
-    TUI --> Facade
     Worker --> Facade
 
     Facade --> EP
@@ -129,7 +127,7 @@ src/bhodi_platform/
 ├── interfaces/                 # Transport adapters
 │   ├── api/                    # FastAPI app, server, routes (health, indexing, query)
 │   ├── cli/                    # argparse commands (main, indexing, query)
-│   ├── tui/                    # Textual chat client (requires bhodi[tui])
+│   ├── tui/                    # Deprecated stub (backward compat only)
 │   └── worker/                 # Background worker adapter
 │
 ├── answering/                  # Generation engine and collaborators
