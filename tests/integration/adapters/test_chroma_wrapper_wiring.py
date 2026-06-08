@@ -1,0 +1,63 @@
+"""
+Integration test: verify `ChromaVectorStoreAdapter` actually wraps the
+chromadb collection in `SafeChromaCollection`.
+
+The unit tests in `tests/unit/.../test_safe_chroma_collection.py` verify
+the wrapper's behavior in isolation. This integration test verifies
+that the adapter (`chroma.py`) is wired through the wrapper, not
+bypassing it by holding a raw `chromadb.Collection` directly.
+
+If a future refactor changes `_create_client_and_collection` to return
+the raw collection (forgetting the wrapper), the security perimeter
+is silently broken. This test catches that regression at PR time.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from bhodi_platform.application.config import VectorStoreConfig
+from bhodi_platform.infrastructure.vector_store.chroma import (
+    ChromaVectorStoreAdapter,
+)
+from bhodi_platform.infrastructure.vector_store.safe_chroma_collection import (
+    SafeChromaCollection,
+)
+
+
+@pytest.fixture
+def adapter(tmp_path) -> ChromaVectorStoreAdapter:
+    """Build an adapter with a tmp persist directory."""
+    config = VectorStoreConfig(
+        provider="chroma",
+        persist_directory=str(tmp_path / "chroma"),
+    )
+    return ChromaVectorStoreAdapter(config)
+
+
+async def test_adapter_collection_is_wrapped(adapter: ChromaVectorStoreAdapter) -> None:
+    """After lazy init, `adapter._collection` must be a `SafeChromaCollection`."""
+    await adapter._ensure_client()
+    assert adapter._collection is not None
+    assert isinstance(adapter._collection, SafeChromaCollection), (
+        f"adapter._collection is {type(adapter._collection).__name__}, "
+        f"expected SafeChromaCollection. The security perimeter is not "
+        f"wired correctly in chroma.py."
+    )
+
+
+async def test_adapter_rejects_none_embeddings_at_wired_layer(
+    adapter: ChromaVectorStoreAdapter,
+) -> None:
+    """Calling adapter.add with embeddings=None must raise the wrapper's ValueError.
+
+    The adapter's `add` method signature has `embeddings: list[list[float]]`,
+    so a strict type checker would reject `None`. But the wrapper also
+    rejects `None` at runtime as defense in depth. This test asserts the
+    runtime check is in the call path.
+    """
+    await adapter._ensure_client()
+
+    with pytest.raises(ValueError, match="must be pre-computed"):
+        # type: ignore[arg-type]  -- intentionally passing None to test the runtime check
+        await adapter.add(chunks=[], embeddings=None)

@@ -13,6 +13,9 @@ from bhodi_platform.domain.entities import Chunk
 from bhodi_platform.domain.exceptions import DocumentNotFoundError
 from bhodi_platform.domain.value_objects import DocumentId
 from bhodi_platform.ports.vector_store import VectorStorePort
+from bhodi_platform.infrastructure.vector_store.safe_chroma_collection import (
+    SafeChromaCollection,
+)
 
 if TYPE_CHECKING:
     from bhodi_platform.application.config import VectorStoreConfig
@@ -30,7 +33,7 @@ class ChromaVectorStoreAdapter:
         self._client: Any | None = None
         self._collection: Any | None = None
 
-    def _create_client_and_collection(self) -> tuple[Any, Any]:
+    def _create_client_and_collection(self) -> tuple[Any, SafeChromaCollection]:
         import chromadb
         from chromadb.config import Settings
 
@@ -39,10 +42,10 @@ class ChromaVectorStoreAdapter:
             path=persist_dir,
             settings=Settings(anonymized_telemetry=False),
         )
-        collection = client.get_or_create_collection(
+        raw_collection = client.get_or_create_collection(
             name=self._config.collection_name or "bhodi"
         )
-        return client, collection
+        return client, SafeChromaCollection(raw_collection)
 
     async def _ensure_client(self) -> None:
         """Lazy initialization of Chroma client."""
