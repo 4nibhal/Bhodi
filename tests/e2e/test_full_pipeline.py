@@ -2,6 +2,7 @@
 
 import pytest
 
+from bhodi_platform._version import get_version
 from bhodi_platform.application.config import (
     BhodiConfig,
     EmbeddingConfig,
@@ -86,7 +87,7 @@ async def test_health_check(app):
     """Health check should return healthy status."""
     status = await app.health_check()
     assert status.status == "healthy"
-    assert status.version == "1.0.0"
+    assert status.version == get_version()
 
 
 @pytest.mark.asyncio

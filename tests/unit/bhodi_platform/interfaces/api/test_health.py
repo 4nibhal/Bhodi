@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from bhodi_platform._version import get_version
 from bhodi_platform.application.models import HealthStatus
 from bhodi_platform.interfaces.api.app import create_app
 
@@ -37,7 +38,7 @@ class TestHealthEndpoint:
         mock_bhodi_app.health_check = AsyncMock(
             return_value=HealthStatus(
                 status="healthy",
-                version="1.0.0",
+                version=get_version(),
                 services={"embedding": True, "vector_store": True, "llm": True},
             )
         )
@@ -45,7 +46,7 @@ class TestHealthEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
-        assert data["version"] == "1.0.0"
+        assert data["version"] == get_version()
         assert data["services"] == {
             "embedding": True,
             "vector_store": True,
@@ -57,7 +58,7 @@ class TestHealthEndpoint:
         mock_bhodi_app.health_check = AsyncMock(
             return_value=HealthStatus(
                 status="degraded",
-                version="1.0.0",
+                version=get_version(),
                 services={"embedding": False, "vector_store": True, "llm": True},
             )
         )

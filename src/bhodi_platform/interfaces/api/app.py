@@ -17,6 +17,7 @@ from typing import Any
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
+from bhodi_platform._version import get_version
 from bhodi_platform.application.config import BhodiConfig
 from bhodi_platform.application.facade import BhodiApplication
 from bhodi_platform.infrastructure.container import Container
@@ -100,7 +101,7 @@ def create_app(config: BhodiConfig | None = None) -> FastAPI:
     app = FastAPI(
         title="Bhodi API",
         description="Production-ready RAG framework with clean hexagonal architecture",
-        version="1.0.0",
+        version=get_version(),
         lifespan=lifespan,
     )
 

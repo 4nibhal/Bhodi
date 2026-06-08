@@ -20,7 +20,6 @@ __all__ = [
     "IndexDocumentResponse",
     "IndexDocumentsRequest",
     "IndexDocumentsResponse",
-    "IndexDocumentsUseCase",
     "QueryRequest",
     "QueryResponse",
 ]
@@ -30,15 +29,10 @@ _EXPORTS = {
         "bhodi_platform.application.facade",
         "BhodiApplication",
     ),
-    "IndexDocumentsUseCase": (
-        "bhodi_platform.application.index_documents",
-        "IndexDocumentsUseCase",
-    ),
 }
 
 if TYPE_CHECKING:
     from bhodi_platform.application.facade import BhodiApplication
-    from bhodi_platform.application.index_documents import IndexDocumentsUseCase
 
 
 def __getattr__(name: str) -> Any:

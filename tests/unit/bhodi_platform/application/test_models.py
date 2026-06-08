@@ -2,6 +2,7 @@
 
 import pytest
 from pydantic import ValidationError
+from bhodi_platform._version import get_version
 from bhodi_platform.application.models import (
     IndexDocumentRequest,
     IndexDocumentResponse,
@@ -63,6 +64,6 @@ class TestQueryResponse:
 
 class TestHealthStatus:
     def test_create(self):
-        status = HealthStatus(status="healthy", version="1.0.0")
+        status = HealthStatus(status="healthy", version=get_version())
         assert status.status == "healthy"
-        assert status.version == "1.0.0"
+        assert status.version == get_version()
