@@ -6,9 +6,13 @@
 
 **A backend RAG engine for Python developers.**
 
-Bhodi indexes documents and answers questions using retrieval-augmented generation. It is built as a modular, hexagonal backend that you can run as a library, a CLI, or a REST API — with swappable adapters for embeddings, vector stores, LLMs, chunkers, and parsers.
+Bhodi indexes documents and answers questions using retrieval-augmented generation. It is built as a modular, hexagonal backend that you can run as a library, a CLI, or a REST API — with swappable adapters for embeddings, vector stores, LLMs, chunkers, and parsers, plus pluggable conversation memory.
 
 > **Status:** Beta. The core indexing/query pipeline is functional. **Authentication, persistent conversation memory, and a managed SaaS distribution are not implemented yet.** See [Roadmap](#roadmap).
+
+## How it works
+
+A request flows through a clean `interface → application → ports → adapter` chain. The API or CLI hands an `IndexDocumentRequest` / `QueryRequest` to the `BhodiApplication` facade, which delegates to a `DocumentParserPort`, `ChunkerPort`, `EmbeddingPort`, `VectorStorePort`, and `LLMPort` (plus `ConversationMemoryPort` for multi-turn). Each port is a `typing.Protocol`; concrete adapters (OpenAI, ChromaDB, PyPDF, …) live under `infrastructure/` and are wired by a single `Container`. The result: your business logic never imports a vendor SDK, and any adapter can be swapped by changing one Pydantic config field.
 
 ---
 
@@ -48,7 +52,7 @@ pipx install bhodi
 
 | Extra | Install command | What it adds |
 |-------|-----------------|--------------|
-| `bhodi[local-llm]` | `uv tool install bhodi --with bhodi[local-llm]` | `llama-cpp-python==0.3.26`, `ollama==0.6.2` |
+| `bhodi[local-llm]` | `uv tool install bhodi --with bhodi[local-llm]` | `llama-cpp-python==0.3.28`, `ollama==0.6.2` |
 | `bhodi[telemetry]` | `uv tool install bhodi --with bhodi[telemetry]` | `opentelemetry-api/sdk/exporter-otlp==1.42.1` |
 | `bhodi[all]` | `uv tool install bhodi --with bhodi[all]` | All of the above |
 
@@ -177,16 +181,15 @@ flowchart TB
     subgraph Interfaces["Interfaces (adapters)"]
         API["FastAPI app<br/>(bhodi-api)"]
         CLI["argparse CLIs<br/>(bhodi, bhodi-index)"]
-        Worker["Worker adapter"]
     end
 
-    subgraph Application["Application"]
+    subgraph Application["Application layer"]
         Facade["BhodiApplication<br/>(facade.py)"]
         Config["BhodiConfig<br/>(config.py)"]
         Models["Request / response models<br/>(models.py)"]
     end
 
-    subgraph Domain["Domain"]
+    subgraph Domain["Domain layer"]
         Entities["Entities<br/>(Document, Chunk, ...)"]
         VO["Value objects<br/>(DocumentId, ChunkId, ...)"]
         Policy["Policies"]
@@ -211,13 +214,13 @@ flowchart TB
         Container["Container<br/>(composition root)"]
     end
 
-    subgraph Cross["Cross-cutting"]
+    subgraph Cross["Cross-cutting packages"]
+        Indexing["indexing/"]
         Evaluation["evaluation/"]
     end
 
     API --> Facade
     CLI --> Facade
-    Worker --> Facade
 
     Facade --> EP
     Facade --> VP
@@ -241,7 +244,8 @@ flowchart TB
     CMem -. implements .-> CMPort
 
     Facade --> Domain
-    Facade --> Cross
+    Facade --> Indexing
+    Facade --> Evaluation
 ```
 
 For the full directory tree and design decisions, see [docs/architecture/overview.md](docs/architecture/overview.md).
@@ -315,6 +319,19 @@ Swap adapters by changing the `provider` field. No code changes are required; th
 
 ---
 
+## Security
+
+Bhodi treats the dependency surface and the input surface as first-class security concerns. The current posture is built on four layers of defense:
+
+- **Pinned dependencies** — every direct dependency in `pyproject.toml` is locked to an exact `==X.Y.Z` version. Container base images and `podman-compose.yml` tags are pinned too. There are no version ranges. Dependabot opens a PR on every new release; CI verifies the lockfile still resolves. The full audit (dep, pinned version, advisory) lives in [`VERSIONS.md`](VERSIONS.md).
+- **`SafeChromaCollection` wrapper** — the ChromaDB adapter is the only vector-store path that touches `chromadb`. It is wrapped in a thin adapter (`src/bhodi_platform/infrastructure/vector_store/chroma.py`) that funnels every call through a small, validated surface so the rest of the system never imports `chromadb` directly. That makes the CVE-2026-45829 vulnerable code path (server-side) unreachable.
+- **4-layer defense in depth** — (1) the API rate-limits at 100 req/60s per IP with `/health` excluded; (2) `BHODI_API_SOURCE_ROOT`, when set, confines local-file ingest to that directory and rejects path traversal; (3) input validation lives in Pydantic models (request bodies) and in the FastAPI dependency layer (path params); (4) lazy adapter initialization means the `Container` never opens network connections or allocates GPU on import.
+- **No telemetry exfiltration by default** — OpenTelemetry export is opt-in. The default exporter is `console`; nothing leaves the process unless you install `bhodi[telemetry]`, set `exporter="otlp"`, and point at a collector you control.
+
+> The API has **no authentication**. Treat it as a local-or-VPN tool and front it with your own auth proxy if you expose it to a network.
+
+---
+
 ## Deploy with Podman
 
 The full guide is in [docs/deploy/podman.md](docs/deploy/podman.md). Quick start:
@@ -337,11 +354,23 @@ The compose stack runs a single `bhodi-api` container built locally from the `Co
 
 ---
 
+## Documentation
+
+The full docs tree lives under [`docs/`](docs/):
+
+- [Architecture overview](docs/architecture/overview.md) — hexagonal layout, directory tree, data flow, design decisions, telemetry
+- [API reference](docs/api/index.md) — every endpoint, request/response shape, status codes, rate-limiting, configuration
+- [Deploy with Podman](docs/deploy/podman.md) — `Containerfile`, `podman-compose.yml`, persistence, troubleshooting
+
+For dependency-version history and the CVE audit referenced from the Security section above, see [`VERSIONS.md`](VERSIONS.md).
+
+---
+
 ## Development
 
 ```bash
 uv sync                       # Install locked dev + runtime deps
-uv run pytest                 # Full suite (220 tests)
+uv run pytest                 # Full suite (199 tests)
 uv run pytest tests/evals     # Quality evaluation suite
 uv run pytest --cov           # Coverage report
 uv run bandit -r src/         # Bandit security scan
@@ -358,7 +387,7 @@ CI runs four jobs (`test`, `build`, `security`, `quality`); the `security` job r
 | Problem | Likely cause | Fix |
 |---------|--------------|-----|
 | `OPENAI_API_KEY not set` | Missing env var | `export OPENAI_API_KEY="sk-..."` or set providers to `mock` via `BHODI_*_PROVIDER` env vars |
-| `Connection refused` on Chroma | Chroma not running | Start it with `podman-compose up chroma`, or set `BHODI_VECTOR_STORE_PROVIDER=in_memory` |
+| ChromaDB fails to start | Persistence path missing or unwritable | Create the directory (`mkdir -p ./data/chroma`) and make sure the API process can read/write it; or set `BHODI_VECTOR_STORE_PROVIDER=in_memory` to run without persistence |
 | HTTP `429` from the API | 100 req/60s per IP exceeded | Wait 60 seconds, reduce request rate, or front the API with your own limiter |
 | PDF not parsing | Corrupted or scanned PDF | Bhodi parses text-based PDFs only; scanned images need OCR, which is not supported |
 | Ollama timeout | Model still loading | Pre-pull the model (`ollama pull llama3.2`) and/or increase the client timeout |

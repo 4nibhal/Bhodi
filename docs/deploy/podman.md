@@ -10,7 +10,7 @@ This guide covers building and running the Bhodi API container with **Podman** a
 
 ## Build and run
 
-### Option 1: Compose stack (API + standalone Chroma)
+### Option 1: Compose stack (API only — ChromaDB runs in embedded mode)
 
 The included `podman-compose.yml` runs a single `bhodi-api` container built from `Containerfile`. ChromaDB runs in embedded mode inside the API process.
 

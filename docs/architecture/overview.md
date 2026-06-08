@@ -46,6 +46,7 @@ flowchart TB
     end
 
     subgraph Cross["Cross-cutting packages"]
+        Indexing["indexing/"]
         Evaluation["evaluation/"]
     end
 
@@ -62,7 +63,8 @@ flowchart TB
     Facade --> Ent
     Facade --> VO
     Facade --> Exc
-    Facade --> Cross
+    Facade --> Indexing
+    Facade --> Evaluation
 
     Container -. wires .-> Embed
     Container -. wires .-> Store
@@ -83,7 +85,7 @@ flowchart TB
 
 ## Directory structure
 
-The real layout of `src/bhodi_platform/`:
+The real layout of `src/bhodi_platform/` (post-cleanup, after PR #39 retired the legacy `interfaces/tui/` and `interfaces/worker/` packages and removed `evaluation/runner.py`):
 
 ```
 src/bhodi_platform/
@@ -97,6 +99,7 @@ src/bhodi_platform/
 ├── application/                # Use cases and orchestration
 │   ├── config.py               # BhodiConfig + per-component Pydantic configs
 │   ├── facade.py               # BhodiApplication (main entry point)
+│   ├── index_documents.py      # IndexDocument use case
 │   └── models.py               # IndexDocumentRequest/Response, QueryRequest/Response, HealthStatus, ...
 │
 ├── ports/                      # Abstract dependencies (typing.Protocol)
@@ -109,8 +112,12 @@ src/bhodi_platform/
 │
 ├── infrastructure/             # Concrete adapters + composition root
 │   ├── container.py            # Container (DI wiring; the only place that knows concrete types)
+│   ├── lifecycle.py            # Process-level startup/shutdown hooks
+│   ├── runtime_registry.py     # Adapter registry used by the Container
+│   ├── telemetry.py            # OpenTelemetry bootstrap and config glue
+│   ├── tracing.py              # @traced(...) decorator + span helpers
 │   ├── embedding/              # openai.py, mock.py
-│   ├── vector_store/           # chroma.py, in_memory.py
+│   ├── vector_store/           # chroma.py (with SafeChromaCollection wrapper), in_memory.py
 │   ├── chunker/                # fixed_size.py, recursive.py
 │   ├── document_parser/        # pypdf.py, mock.py
 │   ├── llm/                    # openai.py, ollama.py, mock.py
@@ -120,9 +127,22 @@ src/bhodi_platform/
 │   ├── api/                    # FastAPI app, server, routes (health, indexing, query)
 │   └── cli/                    # argparse commands (main, indexing, query)
 │
-├── indexing/                   # Loaders, vector store, retriever builders
-└── evaluation/                 # Fixtures, scoring, thresholds
+├── indexing/                   # Parallel loaders/retriever builders (see note below)
+│   ├── __init__.py
+│   ├── ports.py                # Parallel VectorStorePort (see migration note)
+│   ├── settings.py             # Pydantic settings for the indexing package
+│   └── infrastructure.py       # Concrete indexing adapters
+│
+└── evaluation/                 # Offline quality tooling
+    ├── budget.py
+    ├── loader.py
+    ├── models.py
+    ├── scoring.py
+    ├── thresholds.py
+    └── fixtures/               # Eval fixtures (corpora, expected answers)
 ```
+
+> **Note on `indexing/`.** This package is a parallel module that hosts loader, retriever, and vector-store-builder helpers alongside the canonical `ports/vector_store.py`. It currently defines its own `VectorStorePort` in `indexing/ports.py` that overlaps with `ports/vector_store.py`; the two will be unified in a follow-up migration. Treat `indexing/` as a real, first-class module of the shipped product — not a plugin — but expect its public surface to narrow as that migration lands.
 
 ---
 
@@ -311,7 +331,7 @@ This format is stable across adapters; alternative shapes are introduced by addi
 
 ### Cross-cutting packages
 
-`indexing/` and `evaluation/` are first-party packages that build on top of the core `domain → application → ports → infrastructure` stack. They are part of the shipped product surface, not optional plugins.
+`indexing/` and `evaluation/` are first-party packages that build on top of the core `domain → application → ports → infrastructure` stack. They are part of the shipped product surface, not optional plugins. `indexing/` is currently in transition (see the directory-tree note above) — it hosts a parallel `VectorStorePort` definition that will fold into the canonical `ports/vector_store.py` in a follow-up.
 
 ---
 
@@ -326,7 +346,24 @@ This format is stable across adapters; alternative shapes are introduced by addi
 
 ## Telemetry
 
-`BhodiConfig.telemetry` controls OpenTelemetry behavior. The default exporter is `console`; install `bhodi[telemetry]` and set `exporter="otlp"` with `otlp_endpoint` to ship traces to a collector. The application layer adds spans for the major pipeline stages (`indexing.parse`, `indexing.chunk`, `indexing.embed`, `indexing.store`, `query.embed`, `query.search`, `query.generate`) with attributes for `provider`, `model`, and `document_id` / `query_id` where available.
+`BhodiConfig.telemetry` controls OpenTelemetry behavior. The default exporter is `console`; install `bhodi[telemetry]` and set `exporter="otlp"` with `otlp_endpoint` to ship traces to a collector.
+
+Span emission is intentionally scoped to the **adapter layer**, not the application layer. The `@traced(...)` decorator (defined in `bhodi_platform.infrastructure.tracing`) is applied on the concrete adapter classes — typically around the methods that hit an external system — so a span opens whenever a real adapter actually does work, regardless of which use case invoked it. Concrete span names follow the pattern `<package>.<class>.<method>`, e.g.:
+
+| Span name | Emitted by |
+|-----------|------------|
+| `openai.embed_documents` | `OpenAIEmbeddingsAdapter.embed_documents` |
+| `openai.embed_query` | `OpenAIEmbeddingsAdapter.embed_query` |
+| `openai.generate_with_context` | `OpenAILLMAdapter.generate_with_context` |
+| `ollama.generate_with_context` | `OllamaLLMAdapter.generate_with_context` |
+| `chunker.recursive.chunk` | `RecursiveChunker.chunk` |
+| `chunker.fixed_size.chunk` | `FixedSizeChunker.chunk` |
+| `pypdf.parse` | `PyPDFDocumentParser.parse` |
+| `chroma.add` | `ChromaVectorStore.add` (via `SafeChromaCollection`) |
+| `chroma.search` | `ChromaVectorStore.search` (via `SafeChromaCollection`) |
+| `mock.vector_store.add` | `InMemoryVectorStore.add` (and other mock adapters) |
+
+Because spans are emitted at the adapter boundary, the application-layer use cases (`BhodiApplication`, `index_documents`) carry **no per-stage spans** of the form `indexing.parse` / `indexing.chunk` / `indexing.embed` / `indexing.store` / `query.embed` / `query.search` / `query.generate`. To trace a full pipeline request, correlate the adapter spans by `trace_id` — the framework propagates the same OTel context across `await` boundaries.
 
 ---
 
