@@ -11,7 +11,6 @@ flowchart TB
     subgraph Interfaces["Interfaces (transport adapters)"]
         API["FastAPI app<br/>(bhodi-api)"]
         CLI["argparse CLIs<br/>(bhodi, bhodi-index)"]
-        Worker["Worker adapter"]
     end
 
     subgraph AppLayer["Application layer"]
@@ -56,7 +55,6 @@ flowchart TB
 
     API --> Facade
     CLI --> Facade
-    Worker --> Facade
 
     Facade --> EP
     Facade --> VP
@@ -126,8 +124,7 @@ src/bhodi_platform/
 │
 ├── interfaces/                 # Transport adapters
 │   ├── api/                    # FastAPI app, server, routes (health, indexing, query)
-│   ├── cli/                    # argparse commands (main, indexing, query)
-│   └── worker/                 # Background worker adapter
+│   └── cli/                    # argparse commands (main, indexing, query)
 │
 ├── answering/                  # Generation engine and collaborators
 ├── conversation/               # Conversation infrastructure and runtime

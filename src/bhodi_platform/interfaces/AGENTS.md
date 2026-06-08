@@ -13,7 +13,7 @@ metadata:
 # Rules: Interfaces Layer
 
 ## Context & Responsibility
-Transport adapters that expose bhodi_platform functionality to the outside world. This layer contains API servers (FastAPI), CLI commands (Typer), and worker queue adapters. No business logic here—only request handling, response serialization, and transport-specific concerns.
+Transport adapters that expose bhodi_platform functionality to the outside world. This layer contains API servers (FastAPI) and CLI commands (Typer). No business logic here—only request handling, response serialization, and transport-specific concerns.
 
 ## Architectural Contract
 - All transport-specific code lives here
@@ -39,9 +39,6 @@ interfaces/
 │   ├── __init__.py
 │   ├── indexing.py    # bhodi-index commands
 │   └── query.py       # bhodi query commands
-└── worker/
-    ├── __init__.py
-    └── task_queue.py  # Background job adapter
 ```
 
 ## API Server (FastAPI)
@@ -95,13 +92,6 @@ bhodi query "What is the termination clause?" --conversation-id abc123
 # Health check
 bhodi health
 ```
-
-## Worker Adapter
-
-For background job processing:
-- Accepts tasks from queue (Celery, Redis, etc.)
-- Delegates to `BhodiApplication`
-- Returns results or errors to queue
 
 ## Request/Response Models
 
