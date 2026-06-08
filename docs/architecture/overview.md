@@ -127,7 +127,6 @@ src/bhodi_platform/
 ├── interfaces/                 # Transport adapters
 │   ├── api/                    # FastAPI app, server, routes (health, indexing, query)
 │   ├── cli/                    # argparse commands (main, indexing, query)
-│   ├── tui/                    # Deprecated stub (backward compat only)
 │   └── worker/                 # Background worker adapter
 │
 ├── answering/                  # Generation engine and collaborators
