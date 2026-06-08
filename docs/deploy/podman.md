@@ -12,7 +12,7 @@ This guide covers building and running the Bhodi API container with **Podman** a
 
 ### Option 1: Compose stack (API + standalone Chroma)
 
-The included `podman-compose.yml` starts two services: a `bhodi-api` container built from `Containerfile`, and a `chromadb/chroma:latest` vector store.
+The included `podman-compose.yml` runs a single `bhodi-api` container built from `Containerfile`. ChromaDB runs in embedded mode inside the API process.
 
 ```bash
 export OPENAI_API_KEY="sk-..."
@@ -42,7 +42,6 @@ podman run --rm -p 8000:8000 -e OPENAI_API_KEY="sk-..." bhodi
 |---------|----------|-------|
 | Bhodi API | <http://localhost:8000> | Main application (Swagger UI at `/docs`) |
 | Bhodi health | <http://localhost:8000/health> | Used by the container's `HEALTHCHECK` |
-| Chroma DB | <http://localhost:8080> | Standalone Chroma service, internal port `8000` |
 
 Quick smoke test:
 
@@ -72,11 +71,6 @@ podman-compose logs -f bhodi-api
 podman-compose down
 ```
 
-To also drop the Chroma named volume (wipes all indexed vectors):
-
-```bash
-podman-compose down -v
-```
 
 ## Environment variables
 
@@ -95,19 +89,7 @@ Provider selection (`BHODI_PARSER_PROVIDER`, `BHODI_CHUNKER_PROVIDER`, `BHODI_EM
 
 ## Data persistence
 
-- The compose file mounts `./data` on the host to `/app/data` inside the `bhodi-api` container. That path is the default location for ChromaDB's on-disk persistence when you select the `chroma` vector store and an on-disk `persist_directory`; it also keeps any uploaded documents across container restarts.
-- A named Podman volume `chroma-data` (declared under `volumes:`) is used for the standalone `chroma` service. The compose file maps it to `/chroma/chroma` inside the `chroma` container and sets `IS_PERSISTENT=TRUE` plus `PERSIST_DIRECTORY=/chroma/chroma` for that service.
-
-## Image split: pinned Python client vs. latest server
-
-The `bhodi-api` image installs **`chromadb==0.5.23`** from `pyproject.toml` — the Python client is intentionally pinned because 1.0.0–1.5.9 are affected by CVE-2026-45829 (a critical pre-auth code injection; no upstream fix as of 2026-06-05).
-
-The standalone `chroma` service in `podman-compose.yml` is a **different image**: it pulls `chromadb/chroma:latest` from Docker Hub and runs the server in its own container on port `8080`. As a consequence, the API process and the vector store can end up on different Chroma versions. If you care about a single known-good version everywhere, either:
-
-- run an embedded Chroma by selecting the Python `chroma` provider with an on-disk `persist_directory` and removing the `chroma` service from the compose file, or
-- pin a specific `chromadb/chroma:<tag>` image in `podman-compose.yml` and track upstream issue #6717 for a 1.5.10+ fix.
-
-Always put the standalone Chroma service behind a reverse proxy with authentication, regardless of which version it is on.
+- The compose file mounts `./data` on the host to `/app/data` inside the `bhodi-api` container. That path is the default location for ChromaDB's on-disk persistence when you select the `chroma` vector store and an on-disk `persist_directory`; it also keeps any uploaded documents across container restarts. No other named volumes are declared.
 
 ## Troubleshooting
 
@@ -122,12 +104,11 @@ podman unshare chown 1000:1000 ./data
 
 ### Port already in use
 
-If port `8000` or `8080` is taken, edit the `ports:` mappings in `podman-compose.yml`:
+If port `8000` is taken, edit the `ports:` mapping in `podman-compose.yml`:
 
 ```yaml
 ports:
   - "8001:8000"   # bhodi-api
-  - "8081:8000"   # chroma
 ```
 
 ### `OPENAI_API_KEY not set` inside the container
@@ -138,13 +119,9 @@ The compose file expects the variable to be present in the shell or in `.env` be
 
 The container's health check, the API process, and the `bhodi` adapters may not all be ready yet. Re-run `curl http://localhost:8000/health` after a few seconds; if it stays 503, inspect the API logs (`podman-compose logs -f bhodi-api`) for the underlying adapter error reported in the `services` map.
 
-### Container cannot reach the Chroma service
-
-Confirm both containers are on the same network and that `bhodi-api` depends on `chroma`. From inside the API container you should be able to resolve `chroma` and connect to port `8000` (the internal port) — `podman-compose.yml` already wires this up.
-
 ## Files reference
 
 | File | Purpose |
 |------|---------|
-| `Containerfile` | `bhodi-api` image (Python 3.11-slim, uv-based install, non-root user) |
-| `podman-compose.yml` | Multi-service orchestration: `bhodi-api` (built locally) + `chromadb/chroma:latest` |
+| `Containerfile` | `bhodi-api` image (Python 3.11-slim-bookworm, uv-based install, non-root user) |
+| `podman-compose.yml` | Single-service orchestration: `bhodi-api` (built locally) with embedded ChromaDB |
