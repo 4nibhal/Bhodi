@@ -14,6 +14,7 @@ from bodhi_rag.ports.conversation_memory import ConversationMemoryPort
 from bodhi_rag.ports.document_parser import DocumentParserPort
 from bodhi_rag.ports.embedding import EmbeddingPort
 from bodhi_rag.ports.llm import LLMPort
+from bodhi_rag.ports.reranker import RerankerPort
 from bodhi_rag.ports.vector_store import VectorStorePort
 
 if TYPE_CHECKING:
@@ -71,6 +72,7 @@ class Container:
             document_parser=self._get_adapter(DocumentParserPort),
             llm=self._get_adapter(LLMPort),
             conversation_memory=self._get_adapter(ConversationMemoryPort),
+            reranker=self._get_adapter(RerankerPort),
         )
 
     def _get_adapter(self, port_type: type) -> object:
@@ -199,4 +201,22 @@ class Container:
             return VolatileConversationMemoryAdapter(self._config.conversation)
 
         msg = f"Unknown conversation provider: {provider}"
+        raise ValueError(msg)
+
+    def _create_reranker_adapter(self) -> object:
+        """Create reranker adapter based on config."""
+        from bodhi_rag.infrastructure.reranker.cross_encoder import (
+            CrossEncoderReranker,
+        )
+        from bodhi_rag.infrastructure.reranker.noop import NoOpReranker
+
+        provider = self._config.reranker.provider.lower()
+
+        if provider == "noop":
+            return NoOpReranker()
+
+        if provider == "cross_encoder":
+            return CrossEncoderReranker(self._config.reranker)
+
+        msg = f"Unknown reranker provider: {provider}"
         raise ValueError(msg)

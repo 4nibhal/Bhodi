@@ -19,6 +19,7 @@ from bodhi_rag.infrastructure.llm.mock import MockLLMAdapter
 from bodhi_rag.infrastructure.conversation_memory.volatile import (
     VolatileConversationMemoryAdapter,
 )
+from bodhi_rag.infrastructure.reranker.noop import NoOpReranker
 from bodhi_rag.domain.entities import Chunk, Document
 from bodhi_rag.domain.value_objects import ChunkId, DocumentId
 
@@ -79,6 +80,7 @@ def app():
         document_parser=SimpleParserAdapter(),
         llm=MockLLMAdapter(config.llm),
         conversation_memory=VolatileConversationMemoryAdapter(config.conversation),
+        reranker=NoOpReranker(),
     )
 
 

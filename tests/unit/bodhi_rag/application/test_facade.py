@@ -30,6 +30,7 @@ def _build_app(
         document_parser=document_parser or AsyncMock(),
         llm=llm or AsyncMock(),
         conversation_memory=conversation_memory or AsyncMock(),
+        reranker=AsyncMock(),
     )
 
 

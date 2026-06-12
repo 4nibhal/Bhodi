@@ -3,25 +3,28 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+from bodhi_rag._version import get_version
 from bodhi_rag.application.models import (
+    CitationResponse,
     HealthStatus,
     IndexDocumentRequest,
     IndexDocumentResponse,
     QueryRequest,
     QueryResponse,
-    CitationResponse,
 )
-from bodhi_rag._version import get_version
-from bodhi_rag.domain.entities import Chunk, Document, RetrievedDocument
-from bodhi_rag.domain.value_objects import ChunkId
-from bodhi_rag.ports.chunker import ChunkerPort
-from bodhi_rag.ports.conversation_memory import ConversationMemoryPort
-from bodhi_rag.ports.document_parser import DocumentParserPort
-from bodhi_rag.ports.embedding import EmbeddingPort
-from bodhi_rag.ports.llm import LLMPort
-from bodhi_rag.ports.vector_store import VectorStorePort
+from bodhi_rag.domain.entities import Chunk, ConversationTurn, Document, RetrievedDocument
+from bodhi_rag.domain.value_objects import ChunkId, ConversationId, DocumentId
+
+if TYPE_CHECKING:
+    from bodhi_rag.ports.chunker import ChunkerPort
+    from bodhi_rag.ports.conversation_memory import ConversationMemoryPort
+    from bodhi_rag.ports.document_parser import DocumentParserPort
+    from bodhi_rag.ports.embedding import EmbeddingPort
+    from bodhi_rag.ports.llm import LLMPort
+    from bodhi_rag.ports.reranker import RerankerPort
+    from bodhi_rag.ports.vector_store import VectorStorePort
 
 
 RESERVED_PROVENANCE_KEYS = frozenset(
@@ -34,7 +37,7 @@ RESERVED_PROVENANCE_KEYS = frozenset(
         "author",
         "title",
         "subject",
-    }
+    },
 )
 
 
@@ -64,7 +67,7 @@ def _rebind_chunks(document: Document, chunks: list[Chunk]) -> list[Chunk]:
                 chunk_index=index,
                 total_chunks=total_chunks,
                 metadata={**document.metadata, **chunk.metadata},
-            )
+            ),
         )
 
     return rebound_chunks
@@ -104,6 +107,7 @@ class BhodiApplication:
         document_parser: DocumentParserPort,
         llm: LLMPort,
         conversation_memory: ConversationMemoryPort,
+        reranker: RerankerPort,
     ) -> None:
         self._embedding = embedding
         self._vector_store = vector_store
@@ -111,9 +115,10 @@ class BhodiApplication:
         self._document_parser = document_parser
         self._llm = llm
         self._conversation_memory = conversation_memory
+        self._reranker = reranker
 
     async def index_document(
-        self, request: IndexDocumentRequest
+        self, request: IndexDocumentRequest,
     ) -> IndexDocumentResponse:
         parsed_document = await self._document_parser.parse(request.source)
         document = Document(
@@ -135,7 +140,7 @@ class BhodiApplication:
         rebound_chunks = _rebind_chunks(document, chunks)
 
         embeddings = await self._embedding.embed_documents(
-            [chunk.content for chunk in rebound_chunks]
+            [chunk.content for chunk in rebound_chunks],
         )
 
         await self._vector_store.add(rebound_chunks, embeddings)
@@ -186,10 +191,14 @@ class BhodiApplication:
             services=services,
         )
 
-    async def delete_document(self, document_id) -> None:
+    async def delete_document(self, document_id: DocumentId) -> None:
         """Delete a document and all its chunks."""
         await self._vector_store.delete(document_id)
 
-    async def get_conversation_history(self, conversation_id, limit: int | None = None):
+    async def get_conversation_history(
+        self,
+        conversation_id: ConversationId,
+        limit: int | None = None,
+    ) -> list[ConversationTurn]:
         """Get conversation history for a given conversation ID."""
         return await self._conversation_memory.get_history(conversation_id, limit)

@@ -64,9 +64,16 @@ telemetry = [
     "opentelemetry-exporter-otlp==1.42.1",
 ]
 
+# Cross-encoder reranker (sentence-transformers). Optional because the
+# dep tree pulls in torch (~hundreds of MB) and most users do not need
+# the cross-encoder provider; the noop provider is the default.
+cross-encoder = [
+    "sentence-transformers==3.2.1",
+]
+
 # All optional dependencies
 all = [
-    "bodhi-rag[local-llm,telemetry]",
+    "bodhi-rag[local-llm,telemetry,cross-encoder]",
 ]
 
 [project.urls]
@@ -142,6 +149,10 @@ ignore = ["D100", "D101", "D102", "D103", "D104", "D105", "D107", "D203", "D212"
 # cheap: the full CLI/API surface can be imported without dragging in
 # the bodhi-rag application stack.
 "src/bodhi_rag/interfaces/**/*.py" = ["PLC0415"]
+# Tests use `assert` as the canonical assertion mechanism; S101
+# (Use of `assert` detected) is the only rule that meaningfully
+# diverges from the codebase-wide lint config for test files.
+"tests/**/*.py" = ["S101"]
 
 [tool.mypy]
 python_version = "3.11"

@@ -33,6 +33,7 @@ Source of truth for CVEs: GitHub Advisory DB (OSV.dev mirror).
 | llama-cpp-python | 0.3.28 | latest stable, no CVEs |
 | ollama | 0.6.2 | latest stable, no CVEs |
 | textual | 8.2.7 | latest stable, no CVEs |
+| sentence-transformers | 3.2.1 | latest stable, no CVEs (optional `cross-encoder` extra; pulls torch) |
 | opentelemetry-api | 1.42.1 | latest stable, no CVEs |
 | opentelemetry-sdk | 1.42.1 | latest stable, no CVEs |
 | opentelemetry-exporter-otlp | 1.42.1 | latest stable, no CVEs |
