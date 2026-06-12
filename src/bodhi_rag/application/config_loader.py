@@ -23,17 +23,32 @@ from __future__ import annotations
 
 import tomllib
 from pathlib import Path
-from typing import Any, Mapping
+from typing import TYPE_CHECKING, Any
 
-from bodhi_rag.application.config import BhodiConfig, ConfigError
+from bodhi_rag.application.config import (
+    BhodiConfig,
+    ChunkerConfig,
+    ConfigError,
+    ConversationConfig,
+    DocumentParserConfig,
+    EmbeddingConfig,
+    LLMConfig,
+    RerankerConfig,
+    TelemetryConfig,
+    VectorStoreConfig,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 __all__ = ["load_bodhi_config"]
 
 
 def _resolve_config_path(
-    config_path: "str | Path | None", env: "Mapping[str, str] | None"
-) -> "Path | None":
-    """Resolve the TOML config path per the documented precedence.
+    config_path: str | Path | None, env: Mapping[str, str] | None,
+) -> Path | None:
+    """
+    Resolve the TOML config path per the documented precedence.
 
     Returns None when the file layer is to be skipped silently. A missing
     TOML file is ALWAYS silent (per spec: "skip file layer silently"),
@@ -57,9 +72,10 @@ def _resolve_config_path(
 
 
 def _apply_cli_overrides(
-    base: BhodiConfig, cli_overrides: "Mapping[str, Any] | None"
+    base: BhodiConfig, cli_overrides: Mapping[str, Any] | None,
 ) -> BhodiConfig:
-    """Apply CLI overrides on top of the base config.
+    """
+    Apply CLI overrides on top of the base config.
 
     The CLI override mapping uses the same dotted-path semantics that
     the rest of the config surface uses: keys are top-level sections
@@ -78,20 +94,8 @@ def _apply_cli_overrides(
         return base
 
     # Map of section name -> sub-config class, mirroring BhodiConfig.from_toml.
-    from bodhi_rag.application.config import (
-        BhodiConfig as _BhodiConfig,
-        ConversationConfig,
-        ChunkerConfig,
-        DocumentParserConfig,
-        EmbeddingConfig,
-        LLMConfig,
-        RerankerConfig,
-        TelemetryConfig,
-        VectorStoreConfig,
-    )
-
     section_classes: dict[str, type] = {}
-    for field_name in _BhodiConfig.model_fields:
+    for field_name in BhodiConfig.model_fields:
         existing = getattr(base, field_name, None)
         if existing is not None:
             section_classes[field_name] = type(existing)
@@ -111,10 +115,8 @@ def _apply_cli_overrides(
     new_kwargs: dict[str, Any] = {}
     for section, fields in cli_overrides.items():
         if not isinstance(fields, dict):
-            raise ConfigError(
-                f"CLI override for [{section}] must be a dict, "
-                f"got {type(fields).__name__}"
-            )
+            msg = f"CLI override for [{section}] must be a dict, got {type(fields).__name__}"
+            raise ConfigError(msg)
         existing = getattr(base, section, None)
         merged: dict[str, Any] = {}
         if existing is not None and hasattr(existing, "model_dump"):
@@ -123,31 +125,33 @@ def _apply_cli_overrides(
             # No existing sub-config — fall back to the section class.
             cls = section_classes.get(section)
             if cls is not None and hasattr(cls, "model_fields"):
-                merged.update({k: None for k in cls.model_fields})
+                merged.update(dict.fromkeys(cls.model_fields))
         merged.update(fields)
         cls = section_classes.get(section)
         if cls is None:
-            raise ConfigError(f"Unknown config section in CLI overrides: {section!r}")
+            msg = f"Unknown config section in CLI overrides: {section!r}"
+            raise ConfigError(msg)
         try:
             new_kwargs[section] = cls.model_validate(merged)
-        except Exception as exc:  # noqa: BLE001 - rewrap with layer info
-            raise ConfigError(
-                f"Invalid CLI override for [{section}]: {exc}"
-            ) from exc
+        except Exception as exc:
+            msg = f"Invalid CLI override for [{section}]: {exc}"
+            raise ConfigError(msg) from exc
 
     try:
         return base.model_copy(update=new_kwargs)
-    except Exception as exc:  # noqa: BLE001 - rewrap with layer info
-        raise ConfigError(f"Invalid CLI overrides: {exc}") from exc
+    except Exception as exc:
+        msg = f"Invalid CLI overrides: {exc}"
+        raise ConfigError(msg) from exc
 
 
 def load_bodhi_config(
     *,
-    cli_overrides: "Mapping[str, Any] | None" = None,
-    env: "Mapping[str, str] | None" = None,
-    config_path: "str | Path | None" = None,
+    cli_overrides: Mapping[str, Any] | None = None,
+    env: Mapping[str, str] | None = None,
+    config_path: str | Path | None = None,
 ) -> BhodiConfig:
-    """Load a `BhodiConfig` from CLI + env + TOML + defaults.
+    """
+    Load a `BhodiConfig` from CLI + env + TOML + defaults.
 
     Precedence (highest priority first):
         1. `cli_overrides`  — explicit kwargs from the CLI parser
@@ -175,10 +179,9 @@ def load_bodhi_config(
             base = BhodiConfig.from_toml(resolved, env=env)
         except ConfigError:
             raise
-        except Exception as exc:  # noqa: BLE001 - rewrap with layer info
-            raise ConfigError(
-                f"Could not load TOML config {resolved}: {exc}"
-            ) from exc
+        except Exception as exc:
+            msg = f"Could not load TOML config {resolved}: {exc}"
+            raise ConfigError(msg) from exc
     else:
         # No TOML layer — start from env-only (defaults are baked into
         # the default_factory lambdas).
@@ -188,7 +191,8 @@ def load_bodhi_config(
 
 
 def parse_toml_text(text: str) -> dict[str, Any]:
-    """Helper: parse a TOML string with `tomllib` and return a dict.
+    """
+    Parse a TOML string with `tomllib` and return a dict.
 
     Exposed for tests and for callers that need the raw parsed data
     (e.g. to print effective config in a `bodhi-rag config` subcommand,
@@ -199,4 +203,5 @@ def parse_toml_text(text: str) -> dict[str, Any]:
     try:
         return tomllib.loads(text)
     except tomllib.TOMLDecodeError as exc:
-        raise ConfigError(f"Malformed TOML: {exc}") from exc
+        msg = f"Malformed TOML: {exc}"
+        raise ConfigError(msg) from exc

@@ -8,15 +8,20 @@ No hardcoded values for models, temperatures, chunk sizes, or paths.
 from __future__ import annotations
 
 import os
+import tomllib
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Literal, Mapping
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Mapping
+
 
 class ConfigError(ValueError):
-    """Raised when configuration cannot be loaded or validated.
+    """
+    Raised when configuration cannot be loaded or validated.
 
     Subclasses ValueError so callers that catch the broad type still work.
     Error messages must include enough context to debug the issue: file
@@ -33,107 +38,97 @@ class EmbeddingConfig(BaseModel):
     """
 
     provider: str = Field(
-        description="Embedding provider name (e.g., 'openai', 'local', 'mock')"
+        description="Embedding provider name (e.g., 'openai', 'local', 'mock')",
     )
     model: str | None = Field(
-        default=None, description="Model name (provider-specific)"
+        default=None, description="Model name (provider-specific)",
     )
     dimensions: int | None = Field(
-        default=None, description="Embedding dimensions (provider-specific)"
+        default=None, description="Embedding dimensions (provider-specific)",
     )
     batch_size: int = Field(
-        default=100, ge=1, le=1000, description="Batch size for embedding generation"
+        default=100, ge=1, le=1000, description="Batch size for embedding generation",
     )
     extra: dict[str, Any] = Field(
-        default_factory=dict, description="Provider-specific extra config"
+        default_factory=dict, description="Provider-specific extra config",
     )
 
 
 class VectorStoreConfig(BaseModel):
-    """
-    Vector store provider configuration.
-    """
+    """Vector store provider configuration."""
 
     provider: str = Field(
-        description="Vector store provider name (e.g., 'chroma', 'qdrant', 'in_memory')"
+        description="Vector store provider name (e.g., 'chroma', 'qdrant', 'in_memory')",
     )
     persist_directory: Path | None = Field(
-        default=None, description="Directory for persistent storage"
+        default=None, description="Directory for persistent storage",
     )
     collection_name: str = Field(default="bodhi-rag", description="Collection name")
     extra: dict[str, Any] = Field(
-        default_factory=dict, description="Provider-specific extra config"
+        default_factory=dict, description="Provider-specific extra config",
     )
 
 
 class LLMConfig(BaseModel):
-    """
-    LLM provider configuration for generation.
-    """
+    """LLM provider configuration for generation."""
 
     provider: str = Field(
-        description="LLM provider name (e.g., 'openai', 'anthropic', 'ollama', 'mock')"
+        description="LLM provider name (e.g., 'openai', 'anthropic', 'ollama', 'mock')",
     )
     model: str | None = Field(
-        default=None, description="Model name (provider-specific)"
+        default=None, description="Model name (provider-specific)",
     )
     temperature: float = Field(
-        default=0.7, ge=0.0, le=2.0, description="Sampling temperature"
+        default=0.7, ge=0.0, le=2.0, description="Sampling temperature",
     )
     max_tokens: int | None = Field(
-        default=None, ge=1, description="Maximum tokens to generate"
+        default=None, ge=1, description="Maximum tokens to generate",
     )
     context_window: int | None = Field(
-        default=None, ge=1, description="Context window size (provider-specific)"
+        default=None, ge=1, description="Context window size (provider-specific)",
     )
     extra: dict[str, Any] = Field(
-        default_factory=dict, description="Provider-specific extra config"
+        default_factory=dict, description="Provider-specific extra config",
     )
 
 
 class ChunkerConfig(BaseModel):
-    """
-    Text chunking configuration.
-    """
+    """Text chunking configuration."""
 
     provider: str = Field(
-        description="Chunking strategy (e.g., 'fixed_size', 'recursive', 'semantic')"
+        description="Chunking strategy (e.g., 'fixed_size', 'recursive', 'semantic')",
     )
     chunk_size: int | None = Field(
-        default=None, ge=1, description="Target chunk size (model/provider-dependent)"
+        default=None, ge=1, description="Target chunk size (model/provider-dependent)",
     )
     overlap: int | None = Field(
-        default=None, ge=0, description="Overlap between chunks"
+        default=None, ge=0, description="Overlap between chunks",
     )
     extra: dict[str, Any] = Field(
-        default_factory=dict, description="Provider-specific extra config"
+        default_factory=dict, description="Provider-specific extra config",
     )
 
 
 class DocumentParserConfig(BaseModel):
-    """
-    Document parsing configuration.
-    """
+    """Document parsing configuration."""
 
     provider: str = Field(description="Parser provider (e.g., 'pypdf', 'unstructured')")
     extra: dict[str, Any] = Field(
-        default_factory=dict, description="Provider-specific extra config"
+        default_factory=dict, description="Provider-specific extra config",
     )
 
 
 class ConversationConfig(BaseModel):
-    """
-    Conversation memory configuration.
-    """
+    """Conversation memory configuration."""
 
     provider: str = Field(
-        description="Memory provider (e.g., 'volatile', 'persistent')"
+        description="Memory provider (e.g., 'volatile', 'persistent')",
     )
     max_history: int | None = Field(
-        default=None, ge=1, description="Maximum turns to retain per conversation"
+        default=None, ge=1, description="Maximum turns to retain per conversation",
     )
     extra: dict[str, Any] = Field(
-        default_factory=dict, description="Provider-specific extra config"
+        default_factory=dict, description="Provider-specific extra config",
     )
 
 
@@ -187,34 +182,33 @@ class RerankerConfig(BaseModel):
         description="Batch size for the cross-encoder scoring call.",
     )
     extra: dict[str, Any] = Field(
-        default_factory=dict, description="Provider-specific extra config"
+        default_factory=dict, description="Provider-specific extra config",
     )
 
     @model_validator(mode="after")
-    def _validate_cross_encoder_model(self) -> "RerankerConfig":
+    def _validate_cross_encoder_model(self) -> RerankerConfig:
         if self.provider == "cross_encoder" and (
             self.model is None or self.model.strip() == ""
         ):
-            raise ConfigError(
+            msg = (
                 "RerankerConfig.model is required when provider is "
                 '"cross_encoder". Set BODHI_RERANKER_MODEL or define '
                 "[reranker] model in bodhi.toml."
             )
+            raise ConfigError(msg)
         return self
 
 
 class TelemetryConfig(BaseModel):
-    """
-    OpenTelemetry configuration.
-    """
+    """OpenTelemetry configuration."""
 
     enabled: bool = Field(default=True, description="Enable telemetry spans")
     service_name: str = Field(default="bodhi-rag", description="Service name for traces")
     exporter: str = Field(
-        default="console", description="Exporter type ('console', 'otlp', 'none')"
+        default="console", description="Exporter type ('console', 'otlp', 'none')",
     )
     otlp_endpoint: str | None = Field(
-        default=None, description="OTLP collector endpoint"
+        default=None, description="OTLP collector endpoint",
     )
 
 
@@ -227,39 +221,39 @@ class BhodiConfig(BaseModel):
 
     parser: DocumentParserConfig = Field(
         default_factory=lambda: DocumentParserConfig(
-            provider=os.getenv("BODHI_PARSER_PROVIDER", "pypdf")
-        )
+            provider=os.getenv("BODHI_PARSER_PROVIDER", "pypdf"),
+        ),
     )
     chunker: ChunkerConfig = Field(
         default_factory=lambda: ChunkerConfig(
-            provider=os.getenv("BODHI_CHUNKER_PROVIDER", "recursive")
-        )
+            provider=os.getenv("BODHI_CHUNKER_PROVIDER", "recursive"),
+        ),
     )
     embedding: EmbeddingConfig = Field(
         default_factory=lambda: EmbeddingConfig(
-            provider=os.getenv("BODHI_EMBEDDING_PROVIDER", "openai")
-        )
+            provider=os.getenv("BODHI_EMBEDDING_PROVIDER", "openai"),
+        ),
     )
     vector_store: VectorStoreConfig = Field(
         default_factory=lambda: VectorStoreConfig(
-            provider=os.getenv("BODHI_VECTOR_STORE_PROVIDER", "chroma")
-        )
+            provider=os.getenv("BODHI_VECTOR_STORE_PROVIDER", "chroma"),
+        ),
     )
     llm: LLMConfig = Field(
         default_factory=lambda: LLMConfig(
-            provider=os.getenv("BODHI_LLM_PROVIDER", "openai")
-        )
+            provider=os.getenv("BODHI_LLM_PROVIDER", "openai"),
+        ),
     )
     conversation: ConversationConfig = Field(
         default_factory=lambda: ConversationConfig(
-            provider=os.getenv("BODHI_CONVERSATION_PROVIDER", "volatile")
-        )
+            provider=os.getenv("BODHI_CONVERSATION_PROVIDER", "volatile"),
+        ),
     )
     reranker: RerankerConfig = Field(
         default_factory=lambda: RerankerConfig(
             provider=os.getenv("BODHI_RERANKER_PROVIDER", "noop"),  # type: ignore[arg-type]
             model=os.getenv("BODHI_RERANKER_MODEL"),
-        )
+        ),
     )
     telemetry: TelemetryConfig = Field(default_factory=TelemetryConfig)
 
@@ -268,8 +262,9 @@ class BhodiConfig(BaseModel):
     )
 
     @classmethod
-    def from_env(cls, env: "Mapping[str, str] | None" = None) -> "BhodiConfig":
-        """Build a `BhodiConfig` from environment variables only.
+    def from_env(cls, env: Mapping[str, str] | None = None) -> BhodiConfig:
+        """
+        Build a `BhodiConfig` from environment variables only.
 
         The TOML layer is skipped. The `env` mapping defaults to `os.environ`
         but tests can pass a synthetic mapping. Unknown env vars are ignored;
@@ -287,9 +282,10 @@ class BhodiConfig(BaseModel):
 
     @classmethod
     def from_toml(
-        cls, path: "str | Path", *, env: "Mapping[str, str] | None" = None
-    ) -> "BhodiConfig":
-        """Build a `BhodiConfig` from a TOML file.
+        cls, path: str | Path, *, env: Mapping[str, str] | None = None,
+    ) -> BhodiConfig:
+        """
+        Build a `BhodiConfig` from a TOML file.
 
         The TOML file is parsed with `tomllib`; nested sections are validated
         against the corresponding Pydantic sub-config (`[embedding]` ->
@@ -304,26 +300,21 @@ class BhodiConfig(BaseModel):
         TOML < env < CLI when `load_bodhi_config` is used, and matches the
         documented 12-factor behaviour.
         """
-        import tomllib
-
         path = Path(path).expanduser()
         try:
             text = path.read_text(encoding="utf-8")
         except FileNotFoundError as exc:
-            raise ConfigError(
-                f"TOML config file not found: {path}"
-            ) from exc
+            msg = f"TOML config file not found: {path}"
+            raise ConfigError(msg) from exc
         except OSError as exc:
-            raise ConfigError(
-                f"Could not read TOML config file {path}: {exc}"
-            ) from exc
+            msg = f"Could not read TOML config file {path}: {exc}"
+            raise ConfigError(msg) from exc
 
         try:
             data = tomllib.loads(text)
         except tomllib.TOMLDecodeError as exc:
-            raise ConfigError(
-                f"Malformed TOML in {path}: {exc}"
-            ) from exc
+            msg = f"Malformed TOML in {path}: {exc}"
+            raise ConfigError(msg) from exc
 
         # Mapping from TOML section name to a (sub-config class, env-field map)
         # where env-field map is {env var name: field name on the sub-config}.
@@ -380,10 +371,9 @@ class BhodiConfig(BaseModel):
             # Even with only env, the sub-config must validate cleanly.
             try:
                 kwargs[section] = model_cls.model_validate(section_data)
-            except Exception as exc:  # noqa: BLE001 - rewrap with layer info
-                raise ConfigError(
-                    f"Invalid [{section}] section in {path}: {exc}"
-                ) from exc
+            except Exception as exc:
+                msg = f"Invalid [{section}] section in {path}: {exc}"
+                raise ConfigError(msg) from exc
 
         # Apply env to any top-level defaults not covered by sections above.
         # Specifically: the `BhodiConfig` default_factory lambdas read
@@ -397,25 +387,24 @@ class BhodiConfig(BaseModel):
 
 
 @contextmanager
-def _patched_environ(env: "Mapping[str, str]"):
-    """Context manager: temporarily replace os.environ with the given mapping.
+def _patched_environ(env: Mapping[str, str]) -> Iterator[None]:
+    """
+    Context manager: temporarily replace os.environ with the given mapping.
 
     Used so that `BhodiConfig` default_factory lambdas (which call
     `os.getenv`) honor a caller-provided env mapping without mutating
     the real process environment.
     """
-    import os as _os
-
     sentinel = object()
-    saved = {k: _os.environ.get(k, sentinel) for k in env}
+    saved = {k: os.environ.get(k, sentinel) for k in env}
     try:
-        _os.environ.clear()
-        _os.environ.update(env)
+        os.environ.clear()
+        os.environ.update(env)
         yield
     finally:
-        _os.environ.clear()
+        os.environ.clear()
         for k, v in saved.items():
             if v is sentinel:
-                _os.environ.pop(k, None)
+                os.environ.pop(k, None)
             else:
-                _os.environ[k] = v
+                os.environ[k] = v
