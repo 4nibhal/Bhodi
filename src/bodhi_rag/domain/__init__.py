@@ -1,4 +1,5 @@
-"""Domain layer for bodhi-rag platform.
+"""
+Domain layer for bodhi-rag platform.
 
 This package contains pure business logic with no infrastructure dependencies.
 All entities, value objects, policies, and domain services live here.
@@ -21,8 +22,8 @@ from bodhi_rag.domain.entities import (
 )
 from bodhi_rag.domain.exceptions import (
     BodhiRagDomainError,
-    DomainValidationError,
     DocumentIntegrityError,
+    DomainValidationError,
     PolicyViolationError,
 )
 from bodhi_rag.domain.policies import (
@@ -45,27 +46,27 @@ from bodhi_rag.domain.value_objects import (
 __all__ = [
     # Entities
     "Answer",
-    "Chunk",
-    "ConversationTurn",
-    "IndexedDocument",
-    "Query",
-    "RetrievedDocument",
     # Value Objects
     "AnswerMetadata",
-    "ChunkMetadata",
-    "DocumentOrigin",
-    "TruncationDiagnostics",
-    # Policies
-    "ContextAssemblyPolicy",
-    "GenerationPolicy",
-    "IndexingPolicy",
-    "RetrievalPolicy",
     # Exceptions
     "BodhiRagDomainError",
-    "DomainValidationError",
+    "Chunk",
+    "ChunkMetadata",
+    # Policies
+    "ContextAssemblyPolicy",
+    "ConversationTurn",
     "DocumentIntegrityError",
-    "PolicyViolationError",
+    "DocumentOrigin",
+    "DomainValidationError",
+    "GenerationPolicy",
+    "IndexedDocument",
     # Services
     "IndexingDomainService",
+    "IndexingPolicy",
+    "PolicyViolationError",
+    "Query",
     "RetrievalDomainService",
+    "RetrievalPolicy",
+    "RetrievedDocument",
+    "TruncationDiagnostics",
 ]

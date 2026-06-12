@@ -1,4 +1,5 @@
-"""Domain entities for bodhi-rag platform.
+"""
+Domain entities for bodhi-rag platform.
 
 These are simple, Pythonic frozen dataclasses with slots.
 No heavy ORM patterns - pure data with business meaning.
@@ -7,20 +8,22 @@ No heavy ORM patterns - pure data with business meaning.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
-from bodhi_rag.domain.value_objects import (
-    Citation,
-    ChunkId,
-    ConversationId,
-    DocumentId,
-)
+if TYPE_CHECKING:
+    from bodhi_rag.domain.value_objects import (
+        ChunkId,
+        Citation,
+        ConversationId,
+        DocumentId,
+    )
 
 
 @dataclass(frozen=True, slots=True)
 class Document:
-    """Represents a document to be indexed.
+    """
+    Represents a document to be indexed.
 
     Contains the raw content and metadata.
     """
@@ -28,11 +31,12 @@ class Document:
     id: DocumentId
     text: str
     metadata: dict[str, Any] = field(default_factory=dict)
-    indexed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    indexed_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def __post_init__(self) -> None:
         if not self.text:
-            raise ValueError("Document text cannot be empty")
+            msg = "Document text cannot be empty"
+            raise ValueError(msg)
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,12 +48,14 @@ class Query:
 
     def __post_init__(self) -> None:
         if not self.text:
-            raise ValueError("Query text cannot be empty")
+            msg = "Query text cannot be empty"
+            raise ValueError(msg)
 
 
 @dataclass(frozen=True, slots=True)
 class RetrievedDocument:
-    """Represents a document retrieved from the vector store.
+    """
+    Represents a document retrieved from the vector store.
 
     Contains the chunk text and scoring information.
     """
@@ -74,11 +80,14 @@ class Chunk:
 
     def __post_init__(self) -> None:
         if not self.content:
-            raise ValueError("Chunk content cannot be empty")
+            msg = "Chunk content cannot be empty"
+            raise ValueError(msg)
         if self.chunk_index < 0:
-            raise ValueError("chunk_index must be non-negative")
+            msg = "chunk_index must be non-negative"
+            raise ValueError(msg)
         if self.chunk_index >= self.total_chunks:
-            raise ValueError("chunk_index must be less than total_chunks")
+            msg = "chunk_index must be less than total_chunks"
+            raise ValueError(msg)
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,4 +1,5 @@
-"""Domain services for bodhi-rag platform.
+"""
+Domain services for bodhi-rag platform.
 
 Stateless policy orchestrators that coordinate domain logic.
 These are not the application services but pure domain logic coordinators.
@@ -23,7 +24,8 @@ if TYPE_CHECKING:
 
 
 class RetrievalDomainService:
-    """Coordinates retrieval-related domain logic.
+    """
+    Coordinates retrieval-related domain logic.
 
     This is a stateless service that applies RetrievalPolicy and
     ContextAssemblyPolicy to make business decisions about document
@@ -49,9 +51,12 @@ class RetrievalDomainService:
     def check_document_integrity(self, page_content: str | None) -> None:
         """Validate that a document has the required fields for citation support."""
         if not isinstance(page_content, str):
-            raise DocumentIntegrityError(
+            msg = (
                 "Retrieved documents must expose string page_content to preserve "
                 "content and metadata for future citation support."
+            )
+            raise DocumentIntegrityError(
+                msg,
             )
 
     def decide_summarization(self, token_count: int) -> bool:
@@ -72,16 +77,21 @@ class RetrievalDomainService:
     ) -> None:
         """Validate that assembled context is within policy bounds."""
         if assembled_tokens > self._context_policy.context_token_limit:
-            raise PolicyViolationError(
+            msg = (
                 f"Assembled context ({assembled_tokens} tokens) exceeds "
                 f"policy limit ({self._context_policy.context_token_limit} tokens)"
             )
+            raise PolicyViolationError(
+                msg,
+            )
         if not assembled_content:
-            raise PolicyViolationError("Assembled context cannot be empty")
+            msg = "Assembled context cannot be empty"
+            raise PolicyViolationError(msg)
 
 
 class IndexingDomainService:
-    """Coordinates indexing-related domain logic.
+    """
+    Coordinates indexing-related domain logic.
 
     This is a stateless service that applies IndexingPolicy to make
     business decisions about document indexing.
@@ -98,36 +108,48 @@ class IndexingDomainService:
         return self._indexing_policy
 
     def validate_path(self, path: str | Path) -> None:
-        """Validate that a document path meets indexing policy requirements.
+        """
+        Validate that a document path meets indexing policy requirements.
 
         Raises:
             PolicyViolationError: If the path does not meet policy requirements.
+
         """
         path_str = str(path)
         if not self._indexing_policy.is_valid_path(path_str):
-            raise PolicyViolationError(
+            msg = (
                 f"Document path does not meet indexing policy requirements: {path_str}. "
                 f"Allowed extensions: {self._indexing_policy.allowed_extensions}"
             )
+            raise PolicyViolationError(
+                msg,
+            )
 
     def validate_file_size(self, path: str | Path) -> None:
-        """Validate that a file is within the allowed size limit.
+        """
+        Validate that a file is within the allowed size limit.
 
         Raises:
             PolicyViolationError: If the file exceeds size limits.
+
         """
         path_str = str(path)
         if not self._indexing_policy.validate_file_size(path_str):
-            raise PolicyViolationError(
+            msg = (
                 f"File exceeds maximum size limit of "
                 f"{self._indexing_policy.max_file_size_mb}MB: {path_str}"
             )
+            raise PolicyViolationError(
+                msg,
+            )
 
     def validate_index_request(self, path: str | Path) -> None:
-        """Perform all indexing policy validations for a path.
+        """
+        Perform all indexing policy validations for a path.
 
         Raises:
             PolicyViolationError: If any policy requirement is not met.
+
         """
         self.validate_path(path)
         self.validate_file_size(path)

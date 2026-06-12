@@ -1,4 +1,5 @@
-"""Domain value objects for bodhi-rag platform.
+"""
+Domain value objects for bodhi-rag platform.
 
 Immutable, frozen dataclasses that represent descriptive aspects
 of the domain with no conceptual identity.
@@ -7,13 +8,17 @@ of the domain with no conceptual identity.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Sequence
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Sequence
 
 
 @dataclass(frozen=True, slots=True)
 class DocumentId:
-    """Unique identifier for a document.
+    """
+    Unique identifier for a document.
 
     Uses UUID4 for uniqueness.
     """
@@ -37,7 +42,8 @@ class DocumentId:
 
 @dataclass(frozen=True, slots=True)
 class ChunkId:
-    """Unique identifier for a document chunk.
+    """
+    Unique identifier for a document chunk.
 
     Composed of document ID + chunk index for uniqueness.
     """
@@ -47,7 +53,8 @@ class ChunkId:
 
     def __post_init__(self) -> None:
         if self.chunk_index < 0:
-            raise ValueError("chunk_index must be non-negative")
+            msg = "chunk_index must be non-negative"
+            raise ValueError(msg)
 
     def __str__(self) -> str:
         return f"{self.document_id}:{self.chunk_index}"
@@ -86,7 +93,7 @@ class EmbeddingVector:
     def __init__(self, values: Sequence[float]) -> None:
         object.__setattr__(self, "values", tuple(values))
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[float]:
         return iter(self.values)
 
     def __len__(self) -> int:
@@ -106,7 +113,8 @@ class EmbeddingVector:
 
 @dataclass(frozen=True, slots=True)
 class Citation:
-    """A reference to a source chunk with position information.
+    """
+    A reference to a source chunk with position information.
 
     Used for answer citations.
     """
@@ -140,9 +148,12 @@ class DocumentOrigin:
 
     def __post_init__(self) -> None:
         if self.retriever_type not in ("session", "conversation", "corpus"):
-            raise ValueError(
+            msg = (
                 f"Invalid retriever_type: {self.retriever_type}. "
                 "Must be 'session', 'conversation', or 'corpus'."
+            )
+            raise ValueError(
+                msg,
             )
 
 
@@ -196,4 +207,5 @@ class TruncationDiagnostics:
             "character",
             "summarization",
         ):
-            raise ValueError(f"Invalid truncation_type: {self.truncation_type}")
+            msg = f"Invalid truncation_type: {self.truncation_type}"
+            raise ValueError(msg)

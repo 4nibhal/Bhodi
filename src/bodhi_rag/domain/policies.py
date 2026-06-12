@@ -1,4 +1,5 @@
-"""Domain policies for bodhi-rag platform.
+"""
+Domain policies for bodhi-rag platform.
 
 These encapsulate business rules extracted from DefaultRetrievalCollaborator
 and other service logic. Policies are stateless and contain pure business logic.
@@ -7,11 +8,13 @@ and other service logic. Policies are stateless and contain pure business logic.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass(frozen=True, slots=True)
 class RetrievalPolicy:
-    """Policy governing document retrieval behavior.
+    """
+    Policy governing document retrieval behavior.
 
     Encapsulates rules for reranking, summarization thresholds,
     and truncation decisions.
@@ -32,7 +35,8 @@ class RetrievalPolicy:
 
 @dataclass(frozen=True, slots=True)
 class GenerationPolicy:
-    """Policy governing answer generation behavior.
+    """
+    Policy governing answer generation behavior.
 
     Encapsulates rules for role mapping, prompt truncation,
     and summary thresholds.
@@ -74,7 +78,8 @@ class GenerationPolicy:
 
 @dataclass(frozen=True, slots=True)
 class ContextAssemblyPolicy:
-    """Policy governing how context is assembled from retrieved documents.
+    """
+    Policy governing how context is assembled from retrieved documents.
 
     Encapsulates token budget rules for context window management.
     """
@@ -100,7 +105,8 @@ class ContextAssemblyPolicy:
 
 @dataclass(frozen=True, slots=True)
 class IndexingPolicy:
-    """Policy governing document indexing behavior.
+    """
+    Policy governing document indexing behavior.
 
     Encapsulates rules for path validation and indexing constraints.
     """
@@ -110,13 +116,12 @@ class IndexingPolicy:
     require_absolute_path: bool = True
 
     def is_valid_path(self, path: str) -> bool:
-        """Validate that a document path meets indexing requirements.
+        """
+        Validate that a document path meets indexing requirements.
 
         For directories, only checks existence and absolute path requirement.
         For files, also checks the allowed extensions.
         """
-        from pathlib import Path
-
         p = Path(path)
         if self.require_absolute_path and not p.is_absolute():
             return False
@@ -125,14 +130,10 @@ class IndexingPolicy:
         # Directories are always valid (they contain files, not single file)
         if p.is_dir():
             return True
-        if p.suffix.lower() not in self.allowed_extensions:
-            return False
-        return True
+        return p.suffix.lower() in self.allowed_extensions
 
     def validate_file_size(self, path: str) -> bool:
         """Check if a file is within the allowed size limit."""
-        from pathlib import Path
-
         p = Path(path)
         if not p.is_file():
             return True  # Directories don't have a single file size

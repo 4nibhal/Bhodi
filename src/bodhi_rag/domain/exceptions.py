@@ -6,25 +6,21 @@ from __future__ import annotations
 class BodhiRagDomainError(Exception):
     """Base exception for all domain errors."""
 
-    pass
 
 
 class DomainValidationError(BodhiRagDomainError):
     """Raised when domain invariants or validation rules are violated."""
 
-    pass
 
 
 class PolicyViolationError(BodhiRagDomainError):
     """Raised when an action violates defined business policies."""
 
-    pass
 
 
 class DocumentIntegrityError(BodhiRagDomainError):
     """Raised when a document fails integrity checks (e.g., missing required fields)."""
 
-    pass
 
 
 class DocumentNotFoundError(BodhiRagDomainError):
