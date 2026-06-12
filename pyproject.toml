@@ -3,8 +3,8 @@ requires = ["setuptools==82.0.1", "wheel==0.47.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "bhodi"
-version = "0.1.0"
+name = "bodhi-rag"
+version = "0.2.0"
 description = "A backend RAG engine for Python developers."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -34,8 +34,8 @@ dependencies = [
 
     # chromadb pinned at 1.5.9. CVE-2026-45829 (GHSA-f4j7-r4q5-qw2c, 9.3
     # Critical pre-auth code injection) affects the Python FastAPI *server*
-    # in 1.0.0-1.5.9. Bhodi only uses `chromadb.PersistentClient` (embedded
-    # mode) in `src/bhodi_platform/infrastructure/vector_store/chroma.py`,
+    # in 1.0.0-1.5.9. bodhi-rag only uses `chromadb.PersistentClient` (embedded
+    # mode) in `src/bodhi_rag/infrastructure/vector_store/chroma.py`,
     # which never executes the vulnerable code path. The standalone
     # `chromadb/chroma` server image is no longer pulled by
     # `podman-compose.yml`. Bump to >=1.5.10 only after the upstream fix
@@ -66,14 +66,20 @@ telemetry = [
 
 # All optional dependencies
 all = [
-    "bhodi[local-llm,telemetry]",
+    "bodhi-rag[local-llm,telemetry]",
 ]
+
+[project.urls]
+Homepage = "https://github.com/4nibhal/bodhi-rag"
+Repository = "https://github.com/4nibhal/bodhi-rag"
+Issues = "https://github.com/4nibhal/bodhi-rag/issues"
+Changelog = "https://github.com/4nibhal/bodhi-rag/blob/main/VERSIONS.md"
 
 [project.scripts]
 # CLI entry points
-bhodi = "bhodi_platform.interfaces.cli.main:main"
-bhodi-api = "bhodi_platform.interfaces.api.server:main"
-bhodi-index = "bhodi_platform.interfaces.cli.indexing:main"
+bodhi-rag = "bodhi_rag.interfaces.cli.main:main"
+bodhi-rag-api = "bodhi_rag.interfaces.api.server:main"
+bodhi-rag-index = "bodhi_rag.interfaces.cli.indexing:main"
 
 [dependency-groups]
 # Development dependencies
@@ -105,10 +111,10 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["bhodi_platform*"]
+include = ["bodhi_rag*"]
 
 [tool.setuptools.package-data]
-"bhodi_platform" = ["evaluation/fixtures/*.json"]
+"bodhi_rag" = ["evaluation/fixtures/*.json"]
 
 [tool.ruff]
 line-length = 100

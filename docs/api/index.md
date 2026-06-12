@@ -1,4 +1,4 @@
-# Bhodi API Reference
+# Bodhi RAG API Reference
 
 ## Base URL
 
@@ -6,7 +6,7 @@
 http://localhost:8000
 ```
 
-The default bind address is `127.0.0.1:8000`. Override with `BHODI_API_HOST` / `BHODI_API_PORT` or with `bhodi-api --host / --port`.
+The default bind address is `127.0.0.1:8000`. Override with `BODHI_API_HOST` / `BODHI_API_PORT` or with `bodhi-rag-api --host / --port`.
 
 ## Authentication
 
@@ -16,7 +16,7 @@ The API has **no authentication**. It is intended to run behind a VPN or a rever
 
 ### `GET /health`
 
-Liveness and adapter-readiness probe. Calls `app.health_check()` and returns the resulting `HealthStatus` (from `bhodi_platform.application.models`). If any of `embedding`, `vector_store`, or `llm` is missing, the response is `degraded` and the server returns **HTTP 503**. The response body is the `HealthStatus` model:
+Liveness and adapter-readiness probe. Calls `app.health_check()` and returns the resulting `HealthStatus` (from `bodhi_rag.application.models`). If any of `embedding`, `vector_store`, or `llm` is missing, the response is `degraded` and the server returns **HTTP 503**. The response body is the `HealthStatus` model:
 
 ```json
 {
@@ -32,7 +32,7 @@ Liveness and adapter-readiness probe. Calls `app.health_check()` and returns the
 
 The `/health` route is excluded from the API rate limiter.
 
-> **Version drift (known issue).** The `version` field in the `/health` response is hard-coded to `"1.0.0"` in two places: `src/bhodi_platform/application/facade.py` (the `BhodiApplication.health_check` method) and `src/bhodi_platform/interfaces/api/app.py` (the route handler). The actual package version in `pyproject.toml` is `0.1.0`. The discrepancy is tracked and will be fixed in a follow-up that wires the response to the package's installed `__version__`.
+> **Version drift (known issue).** The `version` field in the `/health` response is currently aligned with `importlib.metadata.version("bodhi-rag")` via the shared `get_version()` helper. Wave 5 of the v0.2.0 spec eliminates the hard-coded `"1.0.0"` reported here.
 
 ---
 
@@ -58,7 +58,7 @@ Index a document for later querying. The body is an `IndexDocumentRequest` and t
 | `chunk_size` | integer | No | From chunker adapter (default 512) | Target chunk size in characters |
 | `overlap` | integer | No | From chunker adapter (default 64) | Overlap between consecutive chunks |
 
-When `BHODI_API_SOURCE_ROOT` is set, the resolved path of `source` must stay within that root, and the file extension must be one of `.pdf`, `.txt`, `.md`, `.rst`. Without `BHODI_API_SOURCE_ROOT`, local file ingest via the API is rejected with HTTP 400.
+When `BODHI_API_SOURCE_ROOT` is set, the resolved path of `source` must stay within that root, and the file extension must be one of `.pdf`, `.txt`, `.md`, `.rst`. Without `BODHI_API_SOURCE_ROOT`, local file ingest via the API is rejected with HTTP 400.
 
 **Response body (201 Created)**
 
@@ -193,7 +193,7 @@ All errors are returned as `{"detail": "..."}` JSON bodies, with the appropriate
 
 | Status | When |
 |--------|------|
-| `400` | Bad request — invalid body, invalid `document_id` / `conversation_id`, source policy violation, or missing `BHODI_API_SOURCE_ROOT` |
+| `400` | Bad request — invalid body, invalid `document_id` / `conversation_id`, source policy violation, or missing `BODHI_API_SOURCE_ROOT` |
 | `404` | Document not found on `DELETE /documents/{document_id}` |
 | `422` | Pydantic validation error (FastAPI default) |
 | `429` | Rate limit exceeded (100 requests / 60s per IP, `/health` excluded) |
@@ -208,12 +208,13 @@ A simple in-memory limiter in `interfaces/api/app.py` enforces **100 requests pe
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BHODI_API_HOST` | `127.0.0.1` | API server bind host |
-| `BHODI_API_PORT` | `8000` | API server bind port |
-| `BHODI_API_SOURCE_ROOT` | unset | When set, constrains local file ingest for `POST /documents` to that directory |
+| `BODHI_API_HOST` | `127.0.0.1` | API server bind host |
+| `BODHI_API_PORT` | `8000` | API server bind port |
+| `BODHI_API_SOURCE_ROOT` | unset | When set, constrains local file ingest for `POST /documents` to that directory |
+| `BODHI_CONFIG_PATH` | unset | Path to a TOML config file (`bodhi.toml`) |
 | `OPENAI_API_KEY` | — | Required when any `openai` adapter is selected |
 
-To configure the underlying adapters (LLM, embeddings, vector store, etc.), use the `BHODI_*_PROVIDER` environment variables or instantiate `BhodiConfig` directly and pass it to `create_app(config)` from `bhodi_platform.interfaces.api.app`.
+To configure the underlying adapters (LLM, embeddings, vector store, etc.), use the `BODHI_*_PROVIDER` environment variables or instantiate `BhodiConfig` directly and pass it to `create_app(config)` from `bodhi_rag.interfaces.api.app`. See [`docs/configuration.md`](../configuration.md) for the TOML schema.
 
 ## OpenAPI documentation
 

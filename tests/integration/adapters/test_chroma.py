@@ -8,10 +8,10 @@ import pytest
 import tempfile
 from pathlib import Path
 
-from bhodi_platform.application.config import VectorStoreConfig
-from bhodi_platform.infrastructure.vector_store.chroma import ChromaVectorStoreAdapter
-from bhodi_platform.domain.entities import Chunk
-from bhodi_platform.domain.value_objects import ChunkId, DocumentId
+from bodhi_rag.application.config import VectorStoreConfig
+from bodhi_rag.infrastructure.vector_store.chroma import ChromaVectorStoreAdapter
+from bodhi_rag.domain.entities import Chunk
+from bodhi_rag.domain.value_objects import ChunkId, DocumentId
 
 
 @pytest.fixture

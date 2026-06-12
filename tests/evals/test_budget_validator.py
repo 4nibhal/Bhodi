@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from bhodi_platform.evaluation import (
+from bodhi_rag.evaluation import (
     BudgetValidator,
     GroundingCaseScore,
     GroundingSuiteScore,
@@ -9,7 +9,7 @@ from bhodi_platform.evaluation import (
     RetrievalSuiteScore,
     RetrievalThresholds,
 )
-from bhodi_platform.evaluation.thresholds import EvaluationBudget
+from bodhi_rag.evaluation.thresholds import EvaluationBudget
 
 
 class BudgetValidatorRetrievalTest(TestCase):

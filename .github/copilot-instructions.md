@@ -6,10 +6,10 @@
 
 ## Project Rules & Context
 
-# Rules: Bhodi Root
+# Rules: bodhi-rag Root
 
 ## Context & Responsibility
-This file is the root governance contract for Bhodi. The product is a backend-first document processing and retrieval platform. Terminal UX, local developer runtimes, and AI workflow infrastructure are supporting concerns, not the product core.
+This file is the root governance contract for bodhi-rag. The product is a backend-first document processing and retrieval platform. Terminal UX, local developer runtimes, and AI workflow infrastructure are supporting concerns, not the product core.
 
 ## Product Boundary
 - Product code lives under `src/` and future product-facing docs/tests.
@@ -18,7 +18,7 @@ This file is the root governance contract for Bhodi. The product is a backend-fi
 
 ## Architectural Direction
 - Prefer backend-first service boundaries over TUI-centric orchestration.
-- New business logic belongs in `src/bhodi_platform/` using domain/application/ports/infrastructure separation.
+- New business logic belongs in `src/bodhi_rag/` using domain/application/ports/infrastructure separation.
 - Treat UI, CLI, API, workers, and TUI as adapters over application services.
 - Keep configuration explicit, typed, and environment-driven.
 - No import-time side effects for model loading, vector store creation, filesystem writes, or network initialization.
@@ -53,7 +53,7 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | Defining new rules or scaffolding AGENTS.md | [`rules-creator`](/skills/rules-creator/SKILL.md) |
 | Modifying AGENTS.md structure or adding new rules | [`rules-sync`](/skills/rules-sync/SKILL.md) |
 | Preparing builds, packaging, CI, lockfile policy, or release automation | [`python-release-engineering`](/skills/python-release-engineering/SKILL.md) |
-| Refactoring legacy Bhodi modules into the target backend architecture | [`legacy-modernization`](/skills/legacy-modernization/SKILL.md) |
+| Refactoring legacy bodhi-rag modules into the target backend architecture | [`legacy-modernization`](/skills/legacy-modernization/SKILL.md) |
 | Regenerate AGENTS.md Auto-invoke tables (sync.sh) | [`skill-sync`](/skills/skill-sync/SKILL.md) |
 | Troubleshoot why a skill is missing from AGENTS.md auto-invoke | [`skill-sync`](/skills/skill-sync/SKILL.md) |
 
@@ -96,8 +96,8 @@ Source definitions live in `opencode-flows/agent/` and synchronize into `.openco
 | Rule Scope | Location |
 |------------|----------|
 | `src/` | [`src/AGENTS.md`](src/AGENTS.md) |
-| `src/bhodi_platform/` | [`src/bhodi_platform/AGENTS.md`](src/bhodi_platform/AGENTS.md) |
-| `src/bhodi_platform/interfaces/tui/` | [`src/bhodi_platform/interfaces/tui/AGENTS.md`](src/bhodi_platform/interfaces/tui/AGENTS.md) |
+| `src/bodhi_rag/` | [`src/bodhi_rag/AGENTS.md`](src/bodhi_rag/AGENTS.md) |
+| `src/bodhi_rag/interfaces/tui/` | [`src/bodhi_rag/interfaces/tui/AGENTS.md`](src/bodhi_rag/interfaces/tui/AGENTS.md) |
 | `tests/` | [`tests/AGENTS.md`](tests/AGENTS.md) |
 | `skills/` | [`skills/AGENTS.md`](skills/AGENTS.md) |
 | `opencode-flows/` | [`opencode-flows/AGENTS.md`](opencode-flows/AGENTS.md) |

@@ -12,7 +12,7 @@ metadata:
 # Rules: Tests
 
 ## Context & Responsibility
-This scope governs automated verification for Bhodi product code and migration work.
+This scope governs automated verification for bodhi-rag product code and migration work.
 
 ## Operational Standards
 - Add characterization coverage before changing legacy behavior.

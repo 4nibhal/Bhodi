@@ -1,12 +1,12 @@
-# Bhodi
+# Bodhi RAG
 
-[![CI](https://github.com/4nibhal/Bhodi/actions/workflows/ci.yml/badge.svg)](https://github.com/4nibhal/Bhodi/actions/workflows/ci.yml)
+[![CI](https://github.com/4nibhal/bodhi-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/4nibhal/bodhi-rag/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **A backend RAG engine for Python developers.**
 
-Bhodi indexes documents and answers questions using retrieval-augmented generation. It is built as a modular, hexagonal backend that you can run as a library, a CLI, or a REST API — with swappable adapters for embeddings, vector stores, LLMs, chunkers, and parsers, plus pluggable conversation memory.
+bodhi-rag indexes documents and answers questions using retrieval-augmented generation. It is built as a modular, hexagonal backend that you can run as a library, a CLI, or a REST API — with swappable adapters for embeddings, vector stores, LLMs, chunkers, and parsers, plus pluggable conversation memory.
 
 > **Status:** Beta. The core indexing/query pipeline is functional. **Authentication, persistent conversation memory, and a managed SaaS distribution are not implemented yet.** See [Roadmap](#roadmap).
 
@@ -19,57 +19,57 @@ A request flows through a clean `interface → application → ports → adapter
 ## Try it in 30 seconds (no API keys)
 
 ```bash
-uv tool install bhodi
+uv tool install bodhi-rag
 
-export BHODI_EMBEDDING_PROVIDER=mock
-export BHODI_LLM_PROVIDER=mock
-export BHODI_VECTOR_STORE_PROVIDER=in_memory
+export BODHI_EMBEDDING_PROVIDER=mock
+export BODHI_LLM_PROVIDER=mock
+export BODHI_VECTOR_STORE_PROVIDER=in_memory
 
-bhodi index ./document.pdf
-bhodi query "What is this document about?"
-bhodi health
+bodhi-rag index ./document.pdf
+bodhi-rag query "What is this document about?"
+bodhi-rag health
 ```
 
 Uses mock adapters. No network calls. No OpenAI account required. Good for exploring the CLI and local testing.
 
-> Or with **pipx**: `pipx install bhodi`
+> Or with **pipx**: `pipx install bodhi-rag`
 
 ---
 
 ## Installation
 
 ```bash
-uv tool install bhodi
+uv tool install bodhi-rag
 ```
 
 Or with **pipx**:
 
 ```bash
-pipx install bhodi
+pipx install bodhi-rag
 ```
 
 ### Optional extras
 
 | Extra | Install command | What it adds |
 |-------|-----------------|--------------|
-| `bhodi[local-llm]` | `uv tool install bhodi --with bhodi[local-llm]` | `llama-cpp-python==0.3.28`, `ollama==0.6.2` |
-| `bhodi[telemetry]` | `uv tool install bhodi --with bhodi[telemetry]` | `opentelemetry-api/sdk/exporter-otlp==1.42.1` |
-| `bhodi[all]` | `uv tool install bhodi --with bhodi[all]` | All of the above |
+| `bodhi-rag[local-llm]` | `uv tool install bodhi-rag --with bodhi-rag[local-llm]` | `llama-cpp-python==0.3.28`, `ollama==0.6.2` |
+| `bodhi-rag[telemetry]` | `uv tool install bodhi-rag --with bodhi-rag[telemetry]` | `opentelemetry-api/sdk/exporter-otlp==1.42.1` |
+| `bodhi-rag[all]` | `uv tool install bodhi-rag --with bodhi-rag[all]` | All of the above |
 
 With pipx:
 
 ```bash
-pipx install bhodi
-pipx inject bhodi bhodi[local-llm]    # or bhodi[telemetry], bhodi[all]
+pipx install bodhi-rag
+pipx inject bodhi-rag bodhi-rag[local-llm]    # or bodhi-rag[telemetry], bodhi-rag[all]
 ```
 
-> **Why uv/pipx instead of pip?** `uv tool install` and `pipx install` install Bhodi in an isolated environment, avoiding dependency conflicts with your system Python or other projects.
+> **Why uv/pipx instead of pip?** `uv tool install` and `pipx install` install bodhi-rag in an isolated environment, avoiding dependency conflicts with your system Python or other projects.
 
 ### Development install
 
 ```bash
-git clone https://github.com/4nibhal/bhodi.git
-cd bhodi
+git clone https://github.com/4nibhal/bodhi-rag.git
+cd bodhi-rag
 uv sync
 uv run pytest
 ```
@@ -83,31 +83,31 @@ uv run pytest
 ```bash
 export OPENAI_API_KEY="sk-..."
 
-# Index a document (uses mock providers if you set BHODI_*_PROVIDER=mock)
-bhodi-index ./document.pdf --chunk-size 512 --overlap 64
-bhodi-index ./document.pdf --metadata '{"author": "Test"}'
+# Index a document (uses mock providers if you set BODHI_*_PROVIDER=mock)
+bodhi-rag-index ./document.pdf --chunk-size 512 --overlap 64
+bodhi-rag-index ./document.pdf --metadata '{"author": "Test"}'
 
 # Query
-bhodi query "What is this document about?"
+bodhi-rag query "What is this document about?"
 
 # Health check
-bhodi health
+bodhi-rag health
 ```
 
-You can also drive the top-level `bhodi` command (`bhodi index ...`, `bhodi query ...`, `bhodi health`), and the dedicated `bhodi-api` server:
+You can also drive the top-level `bodhi-rag` command (`bodhi-rag index ...`, `bodhi-rag query ...`, `bodhi-rag health`), and the dedicated `bodhi-rag-api` server:
 
 ```bash
-bhodi-api --host 0.0.0.0 --port 8000
+bodhi-rag-api --host 0.0.0.0 --port 8000
 ```
 
 ### Python API
 
 ```python
 import asyncio
-from bhodi_platform.application.config import BhodiConfig
-from bhodi_platform.application.facade import BhodiApplication
-from bhodi_platform.infrastructure.container import Container
-from bhodi_platform.application.models import IndexDocumentRequest, QueryRequest
+from bodhi_rag.application.config import BhodiConfig
+from bodhi_rag.application.facade import BhodiApplication
+from bodhi_rag.infrastructure.container import Container
+from bodhi_rag.application.models import IndexDocumentRequest, QueryRequest
 
 
 async def main() -> None:
@@ -140,7 +140,7 @@ asyncio.run(main())
 
 ```bash
 export OPENAI_API_KEY="sk-..."
-bhodi-api
+bodhi-rag-api
 ```
 
 In another terminal:
@@ -174,13 +174,13 @@ Interactive API docs are served at `/docs` (Swagger UI), `/redoc`, and `/openapi
 
 ## Architecture
 
-Bhodi uses a hexagonal (ports and adapters) layout. Interfaces call into the `BhodiApplication` facade, which orchestrates ports; concrete adapters are wired in by the `Container`.
+bodhi-rag uses a hexagonal (ports and adapters) layout. Interfaces call into the `BhodiApplication` facade, which orchestrates ports; concrete adapters are wired in by the `Container`.
 
 ```mermaid
 flowchart TB
     subgraph Interfaces["Interfaces (adapters)"]
-        API["FastAPI app<br/>(bhodi-api)"]
-        CLI["argparse CLIs<br/>(bhodi, bhodi-index)"]
+        API["FastAPI app<br/>(bodhi-rag-api)"]
+        CLI["argparse CLIs<br/>(bodhi-rag, bodhi-rag-index)"]
     end
 
     subgraph Application["Application layer"]
@@ -254,10 +254,10 @@ For the full directory tree and design decisions, see [docs/architecture/overvie
 
 ## Configuration
 
-All runtime behavior is driven through `BhodiConfig` (Pydantic models in `bhodi_platform.application.config`):
+All runtime behavior is driven through `BhodiConfig` (Pydantic models in `bodhi_rag.application.config`):
 
 ```python
-from bhodi_platform.application.config import (
+from bodhi_rag.application.config import (
     BhodiConfig,
     EmbeddingConfig,
     VectorStoreConfig,
@@ -276,7 +276,7 @@ config = BhodiConfig(
     vector_store=VectorStoreConfig(
         provider="chroma",
         persist_directory="./data/chroma",
-        collection_name="bhodi",
+        collection_name="bodhi-rag",
     ),
     chunker=ChunkerConfig(provider="recursive", chunk_size=512, overlap=64),
     llm=LLMConfig(provider="openai", model="gpt-4o-mini", temperature=0.7),
@@ -289,16 +289,19 @@ config = BhodiConfig(
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `BHODI_API_HOST` | `127.0.0.1` | API server bind host (overridden by `bhodi-api --host`) |
-| `BHODI_API_PORT` | `8000` | API server bind port (overridden by `bhodi-api --port`) |
-| `BHODI_API_SOURCE_ROOT` | unset | When set, constrains local file ingest for `POST /documents` |
+| `BODHI_API_HOST` | `127.0.0.1` | API server bind host (overridden by `bodhi-rag-api --host`) |
+| `BODHI_API_PORT` | `8000` | API server bind port (overridden by `bodhi-rag-api --port`) |
+| `BODHI_API_SOURCE_ROOT` | unset | When set, constrains local file ingest for `POST /documents` |
+| `BODHI_CONFIG_PATH` | unset | Path to a TOML config file (precedence: CLI > env > TOML > defaults) |
 | `OPENAI_API_KEY` | — | Required when any `openai` adapter is selected |
-| `BHODI_PARSER_PROVIDER` | `pypdf` | Override parser provider |
-| `BHODI_CHUNKER_PROVIDER` | `recursive` | Override chunker provider |
-| `BHODI_EMBEDDING_PROVIDER` | `openai` | Override embedding provider |
-| `BHODI_VECTOR_STORE_PROVIDER` | `chroma` | Override vector store provider |
-| `BHODI_LLM_PROVIDER` | `openai` | Override LLM provider |
-| `BHODI_CONVERSATION_PROVIDER` | `volatile` | Override conversation memory provider |
+| `BODHI_PARSER_PROVIDER` | `pypdf` | Override parser provider |
+| `BODHI_CHUNKER_PROVIDER` | `recursive` | Override chunker provider |
+| `BODHI_EMBEDDING_PROVIDER` | `openai` | Override embedding provider |
+| `BODHI_VECTOR_STORE_PROVIDER` | `chroma` | Override vector store provider |
+| `BODHI_LLM_PROVIDER` | `openai` | Override LLM provider |
+| `BODHI_CONVERSATION_PROVIDER` | `volatile` | Override conversation memory provider |
+
+See [`docs/configuration.md`](docs/configuration.md) for the full TOML schema and the cross-encoder worked example.
 
 ---
 
@@ -315,18 +318,18 @@ config = BhodiConfig(
 
 Swap adapters by changing the `provider` field. No code changes are required; the `Container` rewires everything.
 
-> **Security note (ChromaDB pinning).** We pin `chromadb==1.5.9`. The server-side CVE-2026-45829 (CVSS 9.3, pre-auth code injection) affects 1.0.0–1.5.9, but Bhodi only uses `chromadb.PersistentClient` in embedded mode (`src/bhodi_platform/infrastructure/vector_store/chroma.py`), which never executes the vulnerable code path. We do not deploy the standalone `chromadb/chroma` server. Track upstream issue #6717 for the 1.5.10+ fix.
+> **Security note (ChromaDB pinning).** We pin `chromadb==1.5.9`. The server-side CVE-2026-45829 (CVSS 9.3, pre-auth code injection) affects 1.0.0–1.5.9, but bodhi-rag only uses `chromadb.PersistentClient` in embedded mode (`src/bodhi_rag/infrastructure/vector_store/chroma.py`), which never executes the vulnerable code path. We do not deploy the standalone `chromadb/chroma` server. Track upstream issue #6717 for the 1.5.10+ fix.
 
 ---
 
 ## Security
 
-Bhodi treats the dependency surface and the input surface as first-class security concerns. The current posture is built on four layers of defense:
+bodhi-rag treats the dependency surface and the input surface as first-class security concerns. The current posture is built on four layers of defense:
 
 - **Pinned dependencies** — every direct dependency in `pyproject.toml` is locked to an exact `==X.Y.Z` version. Container base images and `podman-compose.yml` tags are pinned too. There are no version ranges. Dependabot opens a PR on every new release; CI verifies the lockfile still resolves. The full audit (dep, pinned version, advisory) lives in [`VERSIONS.md`](VERSIONS.md).
-- **`SafeChromaCollection` wrapper** — the ChromaDB adapter is the only vector-store path that touches `chromadb`. It is wrapped in a thin adapter (`src/bhodi_platform/infrastructure/vector_store/chroma.py`) that funnels every call through a small, validated surface so the rest of the system never imports `chromadb` directly. That makes the CVE-2026-45829 vulnerable code path (server-side) unreachable.
-- **4-layer defense in depth** — (1) the API rate-limits at 100 req/60s per IP with `/health` excluded; (2) `BHODI_API_SOURCE_ROOT`, when set, confines local-file ingest to that directory and rejects path traversal; (3) input validation lives in Pydantic models (request bodies) and in the FastAPI dependency layer (path params); (4) lazy adapter initialization means the `Container` never opens network connections or allocates GPU on import.
-- **No telemetry exfiltration by default** — OpenTelemetry export is opt-in. The default exporter is `console`; nothing leaves the process unless you install `bhodi[telemetry]`, set `exporter="otlp"`, and point at a collector you control.
+- **`SafeChromaCollection` wrapper** — the ChromaDB adapter is the only vector-store path that touches `chromadb`. It is wrapped in a thin adapter (`src/bodhi_rag/infrastructure/vector_store/chroma.py`) that funnels every call through a small, validated surface so the rest of the system never imports `chromadb` directly. That makes the CVE-2026-45829 vulnerable code path (server-side) unreachable.
+- **4-layer defense in depth** — (1) the API rate-limits at 100 req/60s per IP with `/health` excluded; (2) `BODHI_API_SOURCE_ROOT`, when set, confines local-file ingest to that directory and rejects path traversal; (3) input validation lives in Pydantic models (request bodies) and in the FastAPI dependency layer (path params); (4) lazy adapter initialization means the `Container` never opens network connections or allocates GPU on import.
+- **No telemetry exfiltration by default** — OpenTelemetry export is opt-in. The default exporter is `console`; nothing leaves the process unless you install `bodhi-rag[telemetry]`, set `exporter="otlp"`, and point at a collector you control.
 
 > The API has **no authentication**. Treat it as a local-or-VPN tool and front it with your own auth proxy if you expose it to a network.
 
@@ -344,11 +347,11 @@ podman-compose up --build
 Or build and run the API container directly:
 
 ```bash
-podman build -f Containerfile -t bhodi .
-podman run -p 8000:8000 -e OPENAI_API_KEY="sk-..." bhodi
+podman build -f Containerfile -t bodhi-rag .
+podman run -p 8000:8000 -e OPENAI_API_KEY="sk-..." bodhi-rag
 ```
 
-The compose stack runs a single `bhodi-api` container built locally from the `Containerfile`. ChromaDB runs in embedded mode inside the same process; no separate vector-store container is used.
+The compose stack runs a single `bodhi-rag-api` container built locally from the `Containerfile`. ChromaDB runs in embedded mode inside the same process; no separate vector-store container is used.
 
 > **Warning:** The API has **no authentication**. Only deploy behind a VPN, reverse proxy with auth, or similar. Do not expose directly to the internet.
 
@@ -386,10 +389,10 @@ CI runs four jobs (`test`, `build`, `security`, `quality`); the `security` job r
 
 | Problem | Likely cause | Fix |
 |---------|--------------|-----|
-| `OPENAI_API_KEY not set` | Missing env var | `export OPENAI_API_KEY="sk-..."` or set providers to `mock` via `BHODI_*_PROVIDER` env vars |
-| ChromaDB fails to start | Persistence path missing or unwritable | Create the directory (`mkdir -p ./data/chroma`) and make sure the API process can read/write it; or set `BHODI_VECTOR_STORE_PROVIDER=in_memory` to run without persistence |
+| `OPENAI_API_KEY not set` | Missing env var | `export OPENAI_API_KEY="sk-..."` or set providers to `mock` via `BODHI_*_PROVIDER` env vars |
+| ChromaDB fails to start | Persistence path missing or unwritable | Create the directory (`mkdir -p ./data/chroma`) and make sure the API process can read/write it; or set `BODHI_VECTOR_STORE_PROVIDER=in_memory` to run without persistence |
 | HTTP `429` from the API | 100 req/60s per IP exceeded | Wait 60 seconds, reduce request rate, or front the API with your own limiter |
-| PDF not parsing | Corrupted or scanned PDF | Bhodi parses text-based PDFs only; scanned images need OCR, which is not supported |
+| PDF not parsing | Corrupted or scanned PDF | bodhi-rag parses text-based PDFs only; scanned images need OCR, which is not supported |
 | Ollama timeout | Model still loading | Pre-pull the model (`ollama pull llama3.2`) and/or increase the client timeout |
 | Health check returns 503 | One or more adapters failed to initialize | Check the `services` map in the response body and the server logs for the underlying error |
 
