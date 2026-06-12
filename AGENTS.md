@@ -82,22 +82,19 @@ Source definitions live in `opencode-flows/agent/` and synchronize into `.openco
 
 ## Platform Native Agents
 
+Runtime definitions live at `.opencode/agents/` (gitignored, machine-local).
+A future Wave will move these into `opencode-flows/agent/` for tracked
+source-of-truth parity with the Specialized Sub-agents below.
+
 | Agent | Purpose |
 |-------|---------|
-| `explore` | Fast repository analysis and codebase discovery. |
-| `general` | General multi-step execution support. |
-| `web-researcher` | External documentation and current ecosystem research. |
+| `devops-scripter` | Automation scripts, file bulk operations, log/text parsing. |
+| `doc-retriever` | Verifying technical facts and consulting official documentation. |
+| `git-specialist` | Local Git operations (status, diff, commit, branch). |
+| `tooling-specialist` | Auditing and maintaining infrastructure, CI/CD, repo structure. |
+| `system-architect` | High-level orchestrator; subsumes plan/build roles. |
 
 ## Delegation & Boundaries
-
-### Nested Rules
-
-| Rule Scope | Location |
-| :--- | :--- |
-| `/skills/` | [skills/AGENTS.md](/skills/AGENTS.md) |
-| `opencode-flows` | [opencode-flows/AGENTS.md](/opencode-flows/AGENTS.md) |
-| `src/` | [src/AGENTS.md](/src/AGENTS.md) |
-| `tests/` | [tests/AGENTS.md](/tests/AGENTS.md) |
 
 ## Nested Rules
 
@@ -106,5 +103,4 @@ Source definitions live in `opencode-flows/agent/` and synchronize into `.openco
 | `src/` | [`src/AGENTS.md`](src/AGENTS.md) |
 | `src/bodhi_rag/` | [`src/bodhi_rag/AGENTS.md`](src/bodhi_rag/AGENTS.md) |
 | `tests/` | [`tests/AGENTS.md`](tests/AGENTS.md) |
-| `skills/` | [`skills/AGENTS.md`](skills/AGENTS.md) |
 | `opencode-flows/` | [`opencode-flows/AGENTS.md`](opencode-flows/AGENTS.md) |
