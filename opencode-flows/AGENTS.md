@@ -20,10 +20,12 @@ metadata:
 This scope owns the tracked, source-of-truth definitions of OpenCode sub-agents. The runtime copies in `.opencode/agents/` are gitignored and machine-local; the files under `opencode-flows/agent/` are the contract.
 
 ## Operational Standards
-- One `.md` file per sub-agent, named after the agent (e.g., `backend-architect.md`).
-- Frontmatter must include `description:`, `mode: subagent`, and an explicit `tools:` allow-list.
+- One `.md` file per agent, named after the agent (e.g., `backend-architect.md`).
+- Frontmatter must include `description:`, a `mode:` (`subagent` for delegated workers; `primary` for orchestrators), and an explicit `tools:` allow-list.
+- A `permission:` map (per-tool rules) may supplement `tools:` for fine-grained `bash` control.
+- Primary agents may use additional fields: `delegation_policy` and `ambiguity_scope_policy`.
 - Body sections follow the template in `.opencode/skills/opencode-agent-creator/assets/AGENT-TEMPLATE.md` (Critical Boundaries, Operational Workflow).
-- When a sub-agent gains or loses a tool, update both this source file and the corresponding `opencode.json` `task.permission` entry in the same change.
+- When an agent gains or loses a tool, update both this source file and the corresponding `opencode.json` `task.permission` entry in the same change.
 
 ## Capability Graph
 - @skill/opencode-agent-creator

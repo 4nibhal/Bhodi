@@ -80,19 +80,17 @@ Source definitions live in `opencode-flows/agent/` and synchronize into `.openco
 | Python quality, packaging, testing, runtime safety | [`python-quality-engineer`](opencode-flows/agent/python-quality-engineer.md) |
 | GitHub workflows, Dependabot, PR/release operations | [`github-ops-engineer`](opencode-flows/agent/github-ops-engineer.md) |
 
-## Platform Native Agents
+## Platform Native Sub-agents (OpenCode Flows)
 
-Runtime definitions live at `.opencode/agents/` (gitignored, machine-local).
-A future Wave will move these into `opencode-flows/agent/` for tracked
-source-of-truth parity with the Specialized Sub-agents below.
+Source definitions live in `opencode-flows/agent/` and mirror to `.opencode/agents/` (gitignored, runtime copy). The `system-architect` is a `mode: primary` orchestrator; the rest are `mode: subagent`.
 
-| Agent | Purpose |
-|-------|---------|
-| `devops-scripter` | Automation scripts, file bulk operations, log/text parsing. |
-| `doc-retriever` | Verifying technical facts and consulting official documentation. |
-| `git-specialist` | Local Git operations (status, diff, commit, branch). |
-| `tooling-specialist` | Auditing and maintaining infrastructure, CI/CD, repo structure. |
-| `system-architect` | High-level orchestrator; subsumes plan/build roles. |
+| Agent | Mode | Purpose |
+|-------|------|---------|
+| `devops-scripter` | subagent | Automation scripts, file bulk operations, log/text parsing. |
+| `doc-retriever` | subagent | Verifying technical facts and consulting official documentation. |
+| `git-specialist` | subagent | Local Git operations (status, diff, commit, branch). |
+| `tooling-specialist` | subagent | Auditing and maintaining infrastructure, CI/CD, repo structure. |
+| `system-architect` | primary | High-level orchestrator; subsumes plan/build roles. |
 
 ## Delegation & Boundaries
 
