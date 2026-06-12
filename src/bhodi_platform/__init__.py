@@ -1,1 +1,0 @@
-"""Bhodi backend platform package."""

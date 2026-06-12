@@ -1,16 +1,16 @@
-# Bhodi Architecture Overview
+# bodhi-rag Architecture Overview
 
 ## High-level design
 
-Bhodi is a RAG (Retrieval-Augmented Generation) framework built around **hexagonal architecture** (ports and adapters) with strict **dependency inversion**.
+bodhi-rag is a RAG (Retrieval-Augmented Generation) framework built around **hexagonal architecture** (ports and adapters) with strict **dependency inversion**.
 
 The central rule: domain logic never imports infrastructure. Instead, infrastructure implements domain-defined protocols. The `Container` is the only place where concrete adapter types are referenced.
 
 ```mermaid
 flowchart TB
     subgraph Interfaces["Interfaces (transport adapters)"]
-        API["FastAPI app<br/>(bhodi-api)"]
-        CLI["argparse CLIs<br/>(bhodi, bhodi-index)"]
+        API["FastAPI app<br/>(bodhi-rag-api)"]
+        CLI["argparse CLIs<br/>(bodhi-rag, bodhi-rag-index)"]
     end
 
     subgraph AppLayer["Application layer"]
@@ -85,10 +85,10 @@ flowchart TB
 
 ## Directory structure
 
-The real layout of `src/bhodi_platform/` (post-cleanup, after PR #39 retired the legacy `interfaces/tui/` and `interfaces/worker/` packages and removed `evaluation/runner.py`):
+The real layout of `src/bodhi_rag/` (post-cleanup, after PR #39 retired the legacy `interfaces/tui/` and `interfaces/worker/` packages and removed `evaluation/runner.py`):
 
 ```
-src/bhodi_platform/
+src/bodhi_rag/
 ├── domain/                     # Pure business logic (no I/O, no infra imports)
 │   ├── entities.py             # Document, Chunk, RetrievedDocument, ...
 │   ├── value_objects.py        # DocumentId, ChunkId, ConversationId, ...
@@ -150,7 +150,7 @@ src/bhodi_platform/
 
 ### Domain layer
 
-Pure business logic. Zero imports from other `bhodi_platform` layers, zero external runtime dependencies (no `langchain`, no `chromadb`, no `httpx`).
+Pure business logic. Zero imports from other `bodhi_rag` layers, zero external runtime dependencies (no `langchain`, no `chromadb`, no `httpx`).
 
 - **Entities** — `Document`, `Chunk`, `RetrievedDocument`, `ConversationTurn`, ...
 - **Value objects** — `DocumentId`, `ChunkId`, `ConversationId`, `Citation`, `EmbeddingVector`, ...
@@ -189,11 +189,11 @@ Lazy initialization keeps health checks fast and avoids import-time side effects
 
 ### Container (composition root)
 
-`bhodi_platform.infrastructure.container.Container` is the only place that knows about concrete adapter types. It maps a `BhodiConfig` to a fully-wired `BhodiApplication`:
+`bodhi_rag.infrastructure.container.Container` is the only place that knows about concrete adapter types. It maps a `BhodiConfig` to a fully-wired `BhodiApplication`:
 
 ```python
-from bhodi_platform.application.config import BhodiConfig
-from bhodi_platform.infrastructure.container import Container
+from bodhi_rag.application.config import BhodiConfig
+from bodhi_rag.infrastructure.container import Container
 
 config = BhodiConfig(
     embedding={"provider": "openai", "model": "text-embedding-3-small"},
@@ -278,7 +278,7 @@ class BhodiConfig(BaseModel):
     telemetry: TelemetryConfig         # default: enabled=True, exporter="console"
 ```
 
-`BHODI_PARSER_PROVIDER`, `BHODI_CHUNKER_PROVIDER`, `BHODI_EMBEDDING_PROVIDER`, `BHODI_VECTOR_STORE_PROVIDER`, `BHODI_LLM_PROVIDER`, and `BHODI_CONVERSATION_PROVIDER` override the default `provider` for the matching sub-config. API-server-specific variables (`BHODI_API_HOST`, `BHODI_API_PORT`, `BHODI_API_SOURCE_ROOT`) are consumed by the `interfaces/api` layer, not by `BhodiConfig`.
+`BODHI_PARSER_PROVIDER`, `BODHI_CHUNKER_PROVIDER`, `BODHI_EMBEDDING_PROVIDER`, `BODHI_VECTOR_STORE_PROVIDER`, `BODHI_LLM_PROVIDER`, and `BODHI_CONVERSATION_PROVIDER` override the default `provider` for the matching sub-config. API-server-specific variables (`BODHI_API_HOST`, `BODHI_API_PORT`, `BODHI_API_SOURCE_ROOT`) are consumed by the `interfaces/api` layer, not by `BhodiConfig`. The full TOML schema lives at [`docs/configuration.md`](../configuration.md).
 
 Provider-specific options go in `extra`:
 
@@ -346,9 +346,9 @@ This format is stable across adapters; alternative shapes are introduced by addi
 
 ## Telemetry
 
-`BhodiConfig.telemetry` controls OpenTelemetry behavior. The default exporter is `console`; install `bhodi[telemetry]` and set `exporter="otlp"` with `otlp_endpoint` to ship traces to a collector.
+`BhodiConfig.telemetry` controls OpenTelemetry behavior. The default exporter is `console`; install `bodhi-rag[telemetry]` and set `exporter="otlp"` with `otlp_endpoint` to ship traces to a collector.
 
-Span emission is intentionally scoped to the **adapter layer**, not the application layer. The `@traced(...)` decorator (defined in `bhodi_platform.infrastructure.tracing`) is applied on the concrete adapter classes — typically around the methods that hit an external system — so a span opens whenever a real adapter actually does work, regardless of which use case invoked it. Concrete span names follow the pattern `<package>.<class>.<method>`, e.g.:
+Span emission is intentionally scoped to the **adapter layer**, not the application layer. The `@traced(...)` decorator (defined in `bodhi_rag.infrastructure.tracing`) is applied on the concrete adapter classes — typically around the methods that hit an external system — so a span opens whenever a real adapter actually does work, regardless of which use case invoked it. Concrete span names follow the pattern `<package>.<class>.<method>`, e.g.:
 
 | Span name | Emitted by |
 |-----------|------------|
@@ -371,14 +371,14 @@ Because spans are emitted at the adapter boundary, the application-layer use cas
 
 Adding a new adapter for an existing port:
 
-1. Create `src/bhodi_platform/infrastructure/<component>/<provider>.py` and implement the matching `Protocol`.
+1. Create `src/bodhi_rag/infrastructure/<component>/<provider>.py` and implement the matching `Protocol`.
 2. Accept a typed config object in the constructor; read provider-specific options from `extra`.
 3. Register the provider in `Container._create_<component>_adapter()`.
 4. Add a mock and a contract test.
 
 Adding a brand-new port:
 
-1. Define the `Protocol` under `src/bhodi_platform/ports/`.
+1. Define the `Protocol` under `src/bodhi_rag/ports/`.
 2. Add a sub-config to `BhodiConfig`.
 3. Add a field on `BhodiApplication` and a corresponding adapter directory.
 4. Wire it through `Container.build()`.

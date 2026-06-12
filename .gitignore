@@ -10,6 +10,9 @@ src/bhodi_doc_analyzer.egg-info/
 uv.lock
 src/*.egg-info/
 
+# Local bodhi-rag config (use bodhi.toml.example as a template)
+bodhi.toml
+
 # Environment and runtime artifacts
 .python-version
 .rules

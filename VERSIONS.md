@@ -33,6 +33,7 @@ Source of truth for CVEs: GitHub Advisory DB (OSV.dev mirror).
 | llama-cpp-python | 0.3.28 | latest stable, no CVEs |
 | ollama | 0.6.2 | latest stable, no CVEs |
 | textual | 8.2.7 | latest stable, no CVEs |
+| sentence-transformers | 3.2.1 | latest stable, no CVEs (optional `cross-encoder` extra; pulls torch) |
 | opentelemetry-api | 1.42.1 | latest stable, no CVEs |
 | opentelemetry-sdk | 1.42.1 | latest stable, no CVEs |
 | opentelemetry-exporter-otlp | 1.42.1 | latest stable, no CVEs |
@@ -65,3 +66,37 @@ Re-run periodically (or on Dependabot alerts):
 - `bandit` (already in CI's `security` job)
 - Manual review against OSV.dev: `https://api.osv.dev/v1/query`
 - Manual review against GitHub Advisory DB: `https://github.com/advisories`
+
+## Release Notes
+
+Release notes for shipped versions. Append a new section per release; most recent at the top.
+
+### 0.2.0 (2026-06-12) — Wave 1
+
+**Breaking**
+- Package renamed `bhodi` → `bodhi-rag`. Import path: `from bodhi_rag.application.facade import BhodiApplication`.
+- Environment variables renamed `BHODI_*` → `BODHI_*` (e.g., `BHODI_API_HOST` → `BODHI_API_HOST`, `BHODI_CONFIG_PATH` → `BODHI_CONFIG_PATH`).
+- CLI entry points renamed: `bhodi`, `bhodi-index`, `bhodi-api` → `bodhi-rag`, `bodhi-rag-index`, `bodhi-rag-api`.
+- Container image tag (when published): `ghcr.io/4nibhal/bhodi` → `ghcr.io/4nibhal/bodhi-rag`.
+
+**Added**
+- TOML config loader (`bodhi_rag.application.config_loader.load_bodhi_config`). Precedence: CLI flag > env var > TOML > defaults. Missing TOML is silent; malformed TOML raises `ConfigError`. See `bodhi.toml.example` and `docs/configuration.md`.
+- `Container.build_from(config=None, *, config_path=None)` — composition root that wires a config (or loads from path) and returns a ready `BhodiApplication`.
+- `RerankerConfig` model-validator: enforces `model` required when `provider="cross_encoder"` (Wave 3a contract; adapter not yet shipped).
+- 4 specialized OpenCode sub-agents tracked in `opencode-flows/agent/`: `backend-architect`, `rag-systems-engineer`, `python-quality-engineer`, `github-ops-engineer`.
+- 5 platform-native agents mirrored to `opencode-flows/agent/`: `devops-scripter`, `doc-retriever`, `git-specialist`, `tooling-specialist`, `system-architect` (the last is `mode: primary`).
+
+**Changed**
+- 8 phantom skill entries removed from `AGENTS.md` files (root + 3 nested).
+- Root `AGENTS.md` lists the 5 real platform-native agents (was a placeholder list).
+- `application/config.py` and `application/config_loader.py` ruff-clean (112 → 0). The rest of `src/` still has pre-existing ruff debt (Wave 1 follow-up F7).
+
+**Fixed**
+- Orphan directories removed: `src/bhodi_doc_analyzer/`, `src/indexer/`, `src/bodhi_rag.egg-info/`, plus empty `src/bodhi_rag/{answering,conversation,retrieval}/` placeholders.
+- GitHub repo renamed: `4nibhal/Bhodi` → `4nibhal/bodhi-rag`. Old URL redirects automatically.
+
+**Migration**
+- Replace `import bhodi_rag` (old) → `import bodhi_rag`.
+- Rename env vars `BHODI_*` → `BODHI_*` in your shell, systemd units, and CI secrets.
+- Update `podman-compose.yml`, `Containerfile`, and any `bodhi-rag-api` invocations to the new image tag and CLI names.
+- Consumers that only used `BhodiConfig` / `BhodiApplication` need no code change (public class names preserved).

@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from bhodi_platform.evaluation import (
+from bodhi_rag.evaluation import (
     RetrievedArtifact,
     load_fixture,
     score_grounding_suite,

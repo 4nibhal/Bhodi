@@ -16,11 +16,11 @@ from __future__ import annotations
 
 import pytest
 
-from bhodi_platform.application.config import VectorStoreConfig
-from bhodi_platform.infrastructure.vector_store.chroma import (
+from bodhi_rag.application.config import VectorStoreConfig
+from bodhi_rag.infrastructure.vector_store.chroma import (
     ChromaVectorStoreAdapter,
 )
-from bhodi_platform.infrastructure.vector_store.safe_chroma_collection import (
+from bodhi_rag.infrastructure.vector_store.safe_chroma_collection import (
     SafeChromaCollection,
 )
 

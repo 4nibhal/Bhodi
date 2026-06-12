@@ -309,8 +309,8 @@ wheels = [
 ]
 
 [[package]]
-name = "bhodi"
-version = "0.1.0"
+name = "bodhi-rag"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -357,7 +357,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = "==3.14.1" },
-    { name = "bhodi", extras = ["local-llm", "telemetry"], marker = "extra == 'all'" },
+    { name = "bodhi-rag", extras = ["local-llm", "telemetry"], marker = "extra == 'all'" },
     { name = "chromadb", specifier = "==1.5.9" },
     { name = "fastapi", specifier = "==0.136.3" },
     { name = "httpx", specifier = "==0.28.1" },

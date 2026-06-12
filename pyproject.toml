@@ -3,8 +3,8 @@ requires = ["setuptools==82.0.1", "wheel==0.47.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "bhodi"
-version = "0.1.0"
+name = "bodhi-rag"
+version = "0.2.0"
 description = "A backend RAG engine for Python developers."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -34,8 +34,8 @@ dependencies = [
 
     # chromadb pinned at 1.5.9. CVE-2026-45829 (GHSA-f4j7-r4q5-qw2c, 9.3
     # Critical pre-auth code injection) affects the Python FastAPI *server*
-    # in 1.0.0-1.5.9. Bhodi only uses `chromadb.PersistentClient` (embedded
-    # mode) in `src/bhodi_platform/infrastructure/vector_store/chroma.py`,
+    # in 1.0.0-1.5.9. bodhi-rag only uses `chromadb.PersistentClient` (embedded
+    # mode) in `src/bodhi_rag/infrastructure/vector_store/chroma.py`,
     # which never executes the vulnerable code path. The standalone
     # `chromadb/chroma` server image is no longer pulled by
     # `podman-compose.yml`. Bump to >=1.5.10 only after the upstream fix
@@ -64,16 +64,29 @@ telemetry = [
     "opentelemetry-exporter-otlp==1.42.1",
 ]
 
+# Cross-encoder reranker (sentence-transformers). Optional because the
+# dep tree pulls in torch (~hundreds of MB) and most users do not need
+# the cross-encoder provider; the noop provider is the default.
+cross-encoder = [
+    "sentence-transformers==3.2.1",
+]
+
 # All optional dependencies
 all = [
-    "bhodi[local-llm,telemetry]",
+    "bodhi-rag[local-llm,telemetry,cross-encoder]",
 ]
+
+[project.urls]
+Homepage = "https://github.com/4nibhal/bodhi-rag"
+Repository = "https://github.com/4nibhal/bodhi-rag"
+Issues = "https://github.com/4nibhal/bodhi-rag/issues"
+Changelog = "https://github.com/4nibhal/bodhi-rag/blob/main/VERSIONS.md"
 
 [project.scripts]
 # CLI entry points
-bhodi = "bhodi_platform.interfaces.cli.main:main"
-bhodi-api = "bhodi_platform.interfaces.api.server:main"
-bhodi-index = "bhodi_platform.interfaces.cli.indexing:main"
+bodhi-rag = "bodhi_rag.interfaces.cli.main:main"
+bodhi-rag-api = "bodhi_rag.interfaces.api.server:main"
+bodhi-rag-index = "bodhi_rag.interfaces.cli.indexing:main"
 
 [dependency-groups]
 # Development dependencies
@@ -105,10 +118,10 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["bhodi_platform*"]
+include = ["bodhi_rag*"]
 
 [tool.setuptools.package-data]
-"bhodi_platform" = ["evaluation/fixtures/*.json"]
+"bodhi_rag" = ["evaluation/fixtures/*.json"]
 
 [tool.ruff]
 line-length = 100
@@ -117,6 +130,29 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "D", "UP", "YTT", "ANN", "S", "BLE", "FBT", "B", "A", "COM", "C4", "DTZ", "T10", "DJ", "EM", "EXE", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET", "SLF", "SIM", "TID", "TCH", "ARG", "PTH", "ERA", "PD", "PGH", "PL", "TRY", "RUF"]
 ignore = ["D100", "D101", "D102", "D103", "D104", "D105", "D107", "D203", "D212", "ANN101", "ANN102", "ANN401", "PLR0913", "PLR2004"]
+
+[tool.ruff.lint.per-file-ignores]
+# Infrastructure adapters follow the lazy-import pattern mandated by
+# the root AGENTS.md ("No import-time side effects for model loading,
+# vector store creation, filesystem writes, or network initialization").
+# Imports inside functions/methods are intentional; PLC0415 is
+# locally suppressed. Container.build_from() and the _create_*_adapter
+# factories only import the specific adapter they need to wire, so
+# unused SDKs (openai, chromadb, sentence-transformers, ...) are never
+# loaded when the consumer does not select them.
+"src/bodhi_rag/infrastructure/**/*.py" = ["PLC0415"]
+# Interfaces (FastAPI routes, CLI commands) defer imports of the app
+# container and the bodhi_rag application facade to handler time to
+# break the circular import between `interfaces.api.app` (which
+# includes the routers) and the route modules (which need to call
+# `get_bodhi_rag_app()`). This also keeps `import bodhi_rag.interfaces`
+# cheap: the full CLI/API surface can be imported without dragging in
+# the bodhi-rag application stack.
+"src/bodhi_rag/interfaces/**/*.py" = ["PLC0415"]
+# Tests use `assert` as the canonical assertion mechanism; S101
+# (Use of `assert` detected) is the only rule that meaningfully
+# diverges from the codebase-wide lint config for test files.
+"tests/**/*.py" = ["S101"]
 
 [tool.mypy]
 python_version = "3.11"
