@@ -31,7 +31,11 @@ Use cases and orchestration logic. This layer sits between domain and infrastruc
 - `ChunkerConfig`: Chunker provider settings
 - `DocumentParserConfig`: Parser provider settings
 - `ConversationConfig`: Conversation memory settings
+- `RerankerConfig`: Reranker settings (provider + required model when `cross_encoder`)
 - `BhodiConfig`: Root configuration aggregating all sub-configs
+- `ConfigError`: `ValueError` subclass raised on malformed TOML or missing required fields
+- `BhodiConfig.from_env(env=None)` and `BhodiConfig.from_toml(path, *, env=None)`: alternate constructors
+- `load_bodhi_config(*, cli_overrides, env, config_path)` in `application/config_loader.py`: CLI > env > TOML > defaults
 
 ### Use Cases (`application/*.py`)
 - `BhodiApplication` (facade): Main entry point combining all use cases. The canonical indexing entry point is `BhodiApplication.index_document()`; no separate `IndexDocumentsUseCase` is exposed.

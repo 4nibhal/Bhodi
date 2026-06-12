@@ -7,6 +7,7 @@ This is the new Container that works with the Protocol-based ports.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from bodhi_rag.ports.chunker import ChunkerPort
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
 
 class Container:
     """
-    Dependency injection container for new bodhi-rag architecture.
+    Dependency injection container for bodhi-rag architecture.
 
     Builds adapter instances based on configuration and wires
     them to the BhodiApplication facade.
@@ -32,6 +33,30 @@ class Container:
     def __init__(self, config: BhodiConfig) -> None:
         self._config = config
         self._adapters: dict[type, object] = {}
+
+    @classmethod
+    def build_from(
+        cls,
+        config: BhodiConfig | None = None,
+        *,
+        config_path: "str | Path | None" = None,
+    ) -> "Container":
+        """Build a `Container` from a config, an optional config path, or both.
+
+        When `config` is provided, it is used as-is. When `config_path` is
+        provided, `load_bodhi_config(config_path=...)` is called and the
+        result is used. When both are provided, the explicit `config` wins
+        and `config_path` is documented in a debug log (it is not
+        re-loaded). Callers should prefer one path or the other.
+        """
+        from bodhi_rag.application.config_loader import load_bodhi_config
+
+        if config is None:
+            if config_path is None:
+                config = load_bodhi_config()
+            else:
+                config = load_bodhi_config(config_path=config_path)
+        return cls(config)
 
     def build(self) -> BhodiApplication:
         """Build and return a fully wired BhodiApplication."""

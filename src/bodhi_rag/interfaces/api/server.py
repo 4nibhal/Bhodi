@@ -5,6 +5,9 @@ import os
 
 import uvicorn
 
+from bodhi_rag.application.config import ConfigError
+from bodhi_rag.application.config_loader import load_bodhi_config
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -23,6 +26,13 @@ def main() -> None:
         help="Port to bind (default: 8000)",
     )
     args = parser.parse_args()
+
+    # Validate the TOML config (if configured) at startup so the server
+    # fails fast with a clear error rather than at the first request.
+    try:
+        load_bodhi_config()
+    except ConfigError as exc:
+        raise SystemExit(f"Config error: {exc}") from exc
 
     uvicorn.run(
         "bodhi_rag.interfaces.api.app:create_app",

@@ -5,8 +5,29 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from pathlib import Path
 
 import httpx
+
+from bodhi_rag.application.config_loader import load_bodhi_config
+
+
+def _load_config_or_exit(config_path: "str | Path | None") -> "object | None":
+    """Load the config via `load_bodhi_config` and exit on `ConfigError`.
+
+    Returns the loaded `BhodiConfig` (or None if `config_path` is None and
+    the env / default path is not configured). On error, prints a clear
+    message to stderr and exits with code 2.
+    """
+    if config_path is None and "BODHI_CONFIG_PATH" not in os.environ:
+        # No config layer requested — let the subcommand build its own
+        # default `BhodiConfig()` and the caller's Container do the wiring.
+        return None
+    try:
+        return load_bodhi_config(config_path=config_path)
+    except Exception as exc:  # noqa: BLE001 - top-level CLI error path
+        print(f"Config error: {exc}", file=sys.stderr)
+        sys.exit(2)
 
 
 def _health_command() -> int:
@@ -76,6 +97,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="bodhi-rag - Production-ready RAG framework",
     )
+    # Top-level config flag. The flag is parsed before subcommand dispatch
+    # so the loaded config is available to every subcommand via `load_bodhi_config`.
+    parser.add_argument(
+        "--config",
+        "-c",
+        type=str,
+        default=None,
+        help=(
+            "Path to a bodhi.toml config file. Overrides BODHI_CONFIG_PATH "
+            "and ./bodhi.toml. See docs/configuration.md for the schema."
+        ),
+    )
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     # Index subcommand
@@ -96,6 +129,10 @@ def main() -> int:
     subparsers.add_parser("health", help="Probe the live API /health endpoint")
 
     args = parser.parse_args()
+
+    # Load the TOML config (if any) up front; subcommands that need a
+    # `BhodiConfig` will use it, others (like `health`) ignore it.
+    _load_config_or_exit(args.config)
 
     if args.command == "index":
         from bodhi_rag.interfaces.cli.indexing import main as index_main
