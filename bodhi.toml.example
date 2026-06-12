@@ -1,0 +1,70 @@
+# bodhi-rag configuration example
+# ================================
+#
+# Copy this file to `bodhi.toml` at the repo root (or pass a different
+# path via `--config / -c` on the CLI, or `BODHI_CONFIG_PATH` env var)
+# and uncomment the sections you want to override. Uncommented fields
+# take effect immediately; commented sections fall back to the
+# built-in defaults from `application/config.py`.
+#
+# Resolution order (highest priority first):
+#   1. CLI flags (`bodhi-rag --config /path/to/bodhi.toml ...`)
+#   2. env vars (`BODHI_*`)
+#   3. TOML file (this file, when present)
+#   4. built-in defaults
+#
+# See `docs/configuration.md` for the full schema, the env-var <-> TOML
+# mapping, and a worked cross-encoder example.
+
+# [parser]
+# provider = "pypdf"               # parser implementation
+
+# [chunker]
+# provider = "recursive"           # fixed_size | recursive
+# chunk_size = 512
+# overlap = 64
+
+# [embedding]
+# provider = "openai"              # openai | mock | local
+# model = "text-embedding-3-small"
+# batch_size = 100
+# dimensions = 1536
+# [embedding.extra]
+# api_key_env = "OPENAI_API_KEY"
+
+# [vector_store]
+# provider = "chroma"              # chroma | in_memory
+# persist_directory = "./data/chroma"
+# collection_name = "bodhi-rag"
+
+# [llm]
+# provider = "openai"              # openai | ollama | mock
+# model = "gpt-4o-mini"
+# temperature = 0.7
+# max_tokens = 1024
+# context_window = 128000
+
+# [conversation]
+# provider = "volatile"            # volatile | sqlite (wave 3b)
+# max_history = 50
+
+# -----------------------------------------------------------------------------
+# Reranker (opt-in; default provider is "noop")
+# -----------------------------------------------------------------------------
+# When provider is "cross_encoder", the `model` field is REQUIRED.
+# bodhi-rag does NOT ship with a hardcoded default cross-encoder name;
+# pick one you trust and put it here. Example (sentence-transformers):
+#
+# [reranker]
+# provider = "cross_encoder"
+# model = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+# top_k = 5
+# overfetch_factor = 4
+# batch_size = 32
+# -----------------------------------------------------------------------------
+
+# [telemetry]
+# enabled = true
+# service_name = "bodhi-rag"
+# exporter = "console"             # console | otlp | none
+# otlp_endpoint = "http://localhost:4317"

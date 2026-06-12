@@ -2,8 +2,8 @@
 
 import pytest
 
-from bhodi_platform._version import get_version
-from bhodi_platform.application.config import (
+from bodhi_rag._version import get_version
+from bodhi_rag.application.config import (
     BhodiConfig,
     EmbeddingConfig,
     VectorStoreConfig,
@@ -11,16 +11,16 @@ from bhodi_platform.application.config import (
     LLMConfig,
     ConversationConfig,
 )
-from bhodi_platform.application.models import IndexDocumentRequest
-from bhodi_platform.application.facade import BhodiApplication
-from bhodi_platform.infrastructure.embedding.mock import MockEmbeddingAdapter
-from bhodi_platform.infrastructure.vector_store.in_memory import MockVectorStoreAdapter
-from bhodi_platform.infrastructure.llm.mock import MockLLMAdapter
-from bhodi_platform.infrastructure.conversation_memory.volatile import (
+from bodhi_rag.application.models import IndexDocumentRequest
+from bodhi_rag.application.facade import BhodiApplication
+from bodhi_rag.infrastructure.embedding.mock import MockEmbeddingAdapter
+from bodhi_rag.infrastructure.vector_store.in_memory import MockVectorStoreAdapter
+from bodhi_rag.infrastructure.llm.mock import MockLLMAdapter
+from bodhi_rag.infrastructure.conversation_memory.volatile import (
     VolatileConversationMemoryAdapter,
 )
-from bhodi_platform.domain.entities import Chunk, Document
-from bhodi_platform.domain.value_objects import ChunkId, DocumentId
+from bodhi_rag.domain.entities import Chunk, Document
+from bodhi_rag.domain.value_objects import ChunkId, DocumentId
 
 
 class SimpleChunkerAdapter:
@@ -93,7 +93,7 @@ async def test_health_check(app):
 @pytest.mark.asyncio
 async def test_index_document(app):
     """Index a document and get back document ID."""
-    from bhodi_platform.application.models import IndexDocumentRequest
+    from bodhi_rag.application.models import IndexDocumentRequest
 
     request = IndexDocumentRequest(source="test.pdf")
     response = await app.index_document(request)
@@ -105,7 +105,7 @@ async def test_index_document(app):
 @pytest.mark.asyncio
 async def test_query(app):
     """Query the index after indexing a document."""
-    from bhodi_platform.application.models import IndexDocumentRequest, QueryRequest
+    from bodhi_rag.application.models import IndexDocumentRequest, QueryRequest
 
     # Index first
     await app.index_document(IndexDocumentRequest(source="test.pdf"))

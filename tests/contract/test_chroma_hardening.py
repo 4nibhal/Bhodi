@@ -4,7 +4,7 @@ Hardening contract test for CVE-2026-45829 (client-side variant).
 CVE-2026-45829 has two components:
   - server-side: in `chromadb/server/fastapi/__init__.py`, reachable only
     when the client uses `chromadb.HttpClient` against a remote server.
-    Bhodi uses `chromadb.PersistentClient` (embedded mode) so this path
+    bodhi-rag uses `chromadb.PersistentClient` (embedded mode) so this path
     is unreachable. The `chromadb/chroma` server image is no longer
     pulled by `podman-compose.yml` either.
   - client-side: in `chromadb/api/models/CollectionCommon.py:_embed`,
@@ -16,7 +16,7 @@ CVE-2026-45829 has two components:
     embedding function from the stored config. A poisoned
     `configuration_json` in the local SQLite db can hijack this.
 
-Bhodi's chroma adapter must always supply pre-computed embeddings to
+bodhi-rag's chroma adapter must always supply pre-computed embeddings to
 `collection.add`, `query`, `update`, and `upsert`. This test asserts
 that structural property of the source so that any future regression
 is caught at PR time, not at security-audit time.
@@ -36,7 +36,7 @@ import pytest
 CHROMA_ADAPTER_PATH = (
     Path(__file__).resolve().parents[2]
     / "src"
-    / "bhodi_platform"
+    / "bodhi_rag"
     / "infrastructure"
     / "vector_store"
     / "chroma.py"

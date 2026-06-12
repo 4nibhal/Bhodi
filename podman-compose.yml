@@ -1,17 +1,17 @@
 version: "3.8"
 
 services:
-  bhodi-api:
+  bodhi-rag-api:
     build:
       context: .
       dockerfile: Containerfile
-    container_name: bhodi-api
+    container_name: bodhi-rag-api
     ports:
       - "8000:8000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - BHODI_API_HOST=0.0.0.0
-      - BHODI_API_PORT=8000
+      - BODHI_API_HOST=0.0.0.0
+      - BODHI_API_PORT=8000
     volumes:
       # Persist ChromaDB local data (embedded mode) and any uploaded documents
       - ./data:/app/data

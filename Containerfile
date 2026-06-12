@@ -26,7 +26,7 @@ RUN uv sync --frozen --no-dev
 FROM python:3.11-slim-bookworm
 
 # Create a non-privileged user (UID 1000)
-RUN useradd --create-home --uid 1000 --shell /bin/bash bhodi
+RUN useradd --create-home --uid 1000 --shell /bin/bash bodhi
 
 WORKDIR /app
 
@@ -35,13 +35,13 @@ WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/src /app/src
 
-# Make venv binaries available on PATH (includes bhodi-api, bhodi, bhodi-index)
+# Make venv binaries available on PATH (includes bodhi-rag-api, bodhi-rag, bodhi-rag-index)
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Create data directory for ChromaDB local persistence and assign ownership
-RUN mkdir -p /app/data && chown -R bhodi:bhodi /app
+RUN mkdir -p /app/data && chown -R bodhi:bodhi /app
 
-USER bhodi
+USER bodhi
 
 # Expose the API port
 EXPOSE 8000
@@ -50,5 +50,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-# Entry point defined in pyproject.toml as "bhodi-api"
-ENTRYPOINT ["bhodi-api"]
+# Entry point defined in pyproject.toml as "bodhi-rag-api"
+ENTRYPOINT ["bodhi-rag-api"]

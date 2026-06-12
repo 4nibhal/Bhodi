@@ -13,18 +13,18 @@ metadata:
 # Rules: Product Source
 
 ## Context & Responsibility
-This scope governs all shipped product code under `src/`. Bhodi is a modular backend platform organized around the `bhodi_platform` package.
+This scope governs all shipped product code under `src/`. bodhi-rag is a modular backend platform organized around the `bodhi_rag` package.
 
 ## Operational Standards
-- Put new core logic under `src/bhodi_platform/`.
+- Put new core logic under `src/bodhi_rag/`.
 - Eliminate import-time side effects and global singleton ownership.
 - Use typed settings, explicit factories, and dependency inversion boundaries.
 - Keep filesystem paths, model selection, and device configuration environment-driven.
 
 ## Capability Graph
-- @skill/legacy-modernization
-- @skill/rag-quality
-- @skill/python-release-engineering
+- @skill/rules-creator
+- @skill/skill-creator
+- @skill/opencode-agent-creator
 
 ## Development Guidelines
 - Runtime/Environment: Python with `uv`, reproducible lockfile, explicit dependency groups.
@@ -37,4 +37,4 @@ This scope governs all shipped product code under `src/`. Bhodi is a modular bac
 
 | Rule Scope | Location |
 | :--- | :--- |
-| `src/bhodi_platform/` | [src/bhodi_platform/AGENTS.md](/src/bhodi_platform/AGENTS.md) |
+| `src/bodhi_rag/` | [src/bodhi_rag/AGENTS.md](/src/bodhi_rag/AGENTS.md) |

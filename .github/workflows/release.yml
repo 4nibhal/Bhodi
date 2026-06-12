@@ -55,7 +55,7 @@ jobs:
           "$smoke_dir/bin/python" - <<'PY'
           import importlib.metadata as metadata
 
-          expected = {"bhodi", "bhodi-api", "bhodi-index"}
+          expected = {"bodhi-rag", "bodhi-rag-api", "bodhi-rag-index"}
           discovered = {
               entry_point.name
               for entry_point in metadata.entry_points(group="console_scripts")
@@ -64,10 +64,10 @@ jobs:
           if missing:
               raise SystemExit(f"Missing console scripts: {sorted(missing)}")
 
-          import bhodi_platform.interfaces.api.app
+          import bodhi_rag.interfaces.api.app
           print("All checks passed")
           PY
-          "$smoke_dir/bin/bhodi-index" --help
+          "$smoke_dir/bin/bodhi-rag-index" --help
 
       - name: Publish artifacts to GitHub release
         uses: softprops/action-gh-release@01570a1f39cb168c169c802c3bceb9e93fb10974  # v2.1.0

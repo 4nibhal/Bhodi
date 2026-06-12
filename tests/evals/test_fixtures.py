@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from bhodi_platform.evaluation import load_fixture
+from bodhi_rag.evaluation import load_fixture
 
 
 class EvaluationFixtureTest(TestCase):

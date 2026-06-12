@@ -3,23 +3,23 @@
 import pytest
 from typing import get_type_hints
 
-from bhodi_platform.application.config import (
+from bodhi_rag.application.config import (
     EmbeddingConfig,
     VectorStoreConfig,
     ChunkerConfig,
     LLMConfig,
     ConversationConfig,
 )
-from bhodi_platform.ports.embedding import EmbeddingPort
-from bhodi_platform.ports.vector_store import VectorStorePort
-from bhodi_platform.ports.chunker import ChunkerPort
-from bhodi_platform.ports.llm import LLMPort
-from bhodi_platform.ports.conversation_memory import ConversationMemoryPort
-from bhodi_platform.infrastructure.embedding.mock import MockEmbeddingAdapter
-from bhodi_platform.infrastructure.vector_store.in_memory import MockVectorStoreAdapter
-from bhodi_platform.infrastructure.chunker.fixed_size import FixedSizeChunkerAdapter
-from bhodi_platform.infrastructure.llm.mock import MockLLMAdapter
-from bhodi_platform.infrastructure.conversation_memory.volatile import (
+from bodhi_rag.ports.embedding import EmbeddingPort
+from bodhi_rag.ports.vector_store import VectorStorePort
+from bodhi_rag.ports.chunker import ChunkerPort
+from bodhi_rag.ports.llm import LLMPort
+from bodhi_rag.ports.conversation_memory import ConversationMemoryPort
+from bodhi_rag.infrastructure.embedding.mock import MockEmbeddingAdapter
+from bodhi_rag.infrastructure.vector_store.in_memory import MockVectorStoreAdapter
+from bodhi_rag.infrastructure.chunker.fixed_size import FixedSizeChunkerAdapter
+from bodhi_rag.infrastructure.llm.mock import MockLLMAdapter
+from bodhi_rag.infrastructure.conversation_memory.volatile import (
     VolatileConversationMemoryAdapter,
 )
 
@@ -130,8 +130,8 @@ class TestVectorStorePortContract:
     @pytest.mark.asyncio
     async def test_add_and_search(self, adapter):
         """Can add chunks and search."""
-        from bhodi_platform.domain.entities import Chunk
-        from bhodi_platform.domain.value_objects import ChunkId, DocumentId
+        from bodhi_rag.domain.entities import Chunk
+        from bodhi_rag.domain.value_objects import ChunkId, DocumentId
 
         doc_id = DocumentId()
         chunk_id = ChunkId(document_id=doc_id, chunk_index=0)
@@ -195,8 +195,8 @@ class TestLLMPortContract:
     @pytest.mark.asyncio
     async def test_generate_with_context(self, adapter):
         """generate_with_context returns str."""
-        from bhodi_platform.domain.entities import RetrievedDocument
-        from bhodi_platform.domain.value_objects import ChunkId, DocumentId
+        from bodhi_rag.domain.entities import RetrievedDocument
+        from bodhi_rag.domain.value_objects import ChunkId, DocumentId
 
         doc_id = DocumentId()
         chunk_id = ChunkId(document_id=doc_id, chunk_index=0)
@@ -230,8 +230,8 @@ class TestConversationMemoryPortContract:
     @pytest.mark.asyncio
     async def test_add_and_get_history(self, adapter):
         """Can add turn and retrieve history."""
-        from bhodi_platform.domain.entities import ConversationTurn
-        from bhodi_platform.domain.value_objects import ConversationId
+        from bodhi_rag.domain.entities import ConversationTurn
+        from bodhi_rag.domain.value_objects import ConversationId
 
         conv_id = ConversationId()
         turn = ConversationTurn(
@@ -249,8 +249,8 @@ class TestConversationMemoryPortContract:
     @pytest.mark.asyncio
     async def test_clear(self, adapter):
         """Can clear conversation history."""
-        from bhodi_platform.domain.entities import ConversationTurn
-        from bhodi_platform.domain.value_objects import ConversationId
+        from bodhi_rag.domain.entities import ConversationTurn
+        from bodhi_rag.domain.value_objects import ConversationId
 
         conv_id = ConversationId()
         turn = ConversationTurn(

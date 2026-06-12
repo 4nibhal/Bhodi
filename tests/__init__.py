@@ -1,1 +1,1 @@
-"""Test support package for Bhodi regression suites."""
+"""Test support package for bodhi-rag regression suites."""

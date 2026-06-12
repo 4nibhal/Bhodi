@@ -1,19 +1,19 @@
 ---
 scope: "/"
 type: "rules"
-role: "Bhodi Root Governance"
+role: "Bodhi RAG Root Governance"
 priority: critical
 metadata:
   system: "aiwf"
-  product_name: "Bhodi"
+  product_name: "bodhi-rag"
   product_posture: "backend-first document processing platform"
   non_product_paths: ["ai-workflow", ".opencode", ".aiwf"]
 ---
 
-# Rules: Bhodi Root
+# Rules: bodhi-rag Root
 
 ## Context & Responsibility
-This file is the root governance contract for Bhodi. The product is a backend-first document processing and retrieval platform. Terminal UX, local developer runtimes, and AI workflow infrastructure are supporting concerns, not the product core.
+This file is the root governance contract for bodhi-rag. The product is a backend-first document processing and retrieval platform. Terminal UX, local developer runtimes, and AI workflow infrastructure are supporting concerns, not the product core.
 
 ## Product Boundary
 - Product code lives under `src/` and future product-facing docs/tests.
@@ -21,7 +21,7 @@ This file is the root governance contract for Bhodi. The product is a backend-fi
 
 ## Architectural Direction
 - Prefer backend-first service boundaries over TUI-centric orchestration.
-- New business logic belongs in `src/bhodi_platform/` using domain/application/ports/infrastructure separation.
+- New business logic belongs in `src/bodhi_rag/` using domain/application/ports/infrastructure separation.
 - Treat UI, CLI, API, workers, and TUI as adapters over application services.
 - Keep configuration explicit, typed, and environment-driven.
 - No import-time side effects for model loading, vector store creation, filesystem writes, or network initialization.
@@ -34,10 +34,6 @@ This file is the root governance contract for Bhodi. The product is a backend-fi
 - Separation of Concerns: Product work and AIWF/dev-infra work should stay logically separated unless the change explicitly couples both.
 
 ## Capability Graph
-- @skill/legacy-modernization
-- @skill/rag-quality
-- @skill/python-release-engineering
-- @skill/github-automation
 - @skill/rules-creator
 - @skill/skill-creator
 - @skill/opencode-agent-creator
@@ -52,8 +48,6 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | After creating/modifying a skill | [`skill-sync`](/skills/skill-sync/SKILL.md) |
 | Before creating a commit | [`git-excellence`](/.opencode/skills/git-excellence/SKILL.md) |
 | Before creating a commit or PR | [`git-excellence`](/.opencode/skills/git-excellence/SKILL.md) |
-| Changing chunking, retrieval, reranking, prompting, or answer grounding | [`rag-quality`](/skills/rag-quality/SKILL.md) |
-| Creating PRs, release workflows, Dependabot config, or GitHub automation policies | [`github-automation`](/skills/github-automation/SKILL.md) |
 | Creating new OpenCode sub-agents | [`opencode-agent-creator`](/.opencode/skills/opencode-agent-creator/SKILL.md) |
 | Creating new OpenCode sub-agents | [`opencode-agent-creator`](/skills/opencode-agent-creator/SKILL.md) |
 | Creating or scaffolding new skills | [`skill-creator`](/.opencode/skills/skill-creator/SKILL.md) |
@@ -63,8 +57,6 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | During Pull Request creation | [`git-excellence`](/.opencode/skills/git-excellence/SKILL.md) |
 | Modifying AGENTS.md structure or adding new rules | [`rules-sync`](/.opencode/skills/rules-sync/SKILL.md) |
 | Modifying AGENTS.md structure or adding new rules | [`rules-sync`](/skills/rules-sync/SKILL.md) |
-| Preparing builds, packaging, CI, lockfile policy, or release automation | [`python-release-engineering`](/skills/python-release-engineering/SKILL.md) |
-| Refactoring legacy Bhodi modules into the target backend architecture | [`legacy-modernization`](/skills/legacy-modernization/SKILL.md) |
 | Regenerate AGENTS.md Auto-invoke tables (sync.sh) | [`skill-sync`](/.opencode/skills/skill-sync/SKILL.md) |
 | Regenerate AGENTS.md Auto-invoke tables (sync.sh) | [`skill-sync`](/skills/skill-sync/SKILL.md) |
 | Running AIWF init or refining bootstrap intake behavior | [`bootstrap`](/.opencode/skills/bootstrap/SKILL.md) |
@@ -90,29 +82,25 @@ Source definitions live in `opencode-flows/agent/` and synchronize into `.openco
 
 ## Platform Native Agents
 
+Runtime definitions live at `.opencode/agents/` (gitignored, machine-local).
+A future Wave will move these into `opencode-flows/agent/` for tracked
+source-of-truth parity with the Specialized Sub-agents below.
+
 | Agent | Purpose |
 |-------|---------|
-| `explore` | Fast repository analysis and codebase discovery. |
-| `general` | General multi-step execution support. |
-| `web-researcher` | External documentation and current ecosystem research. |
+| `devops-scripter` | Automation scripts, file bulk operations, log/text parsing. |
+| `doc-retriever` | Verifying technical facts and consulting official documentation. |
+| `git-specialist` | Local Git operations (status, diff, commit, branch). |
+| `tooling-specialist` | Auditing and maintaining infrastructure, CI/CD, repo structure. |
+| `system-architect` | High-level orchestrator; subsumes plan/build roles. |
 
 ## Delegation & Boundaries
-
-### Nested Rules
-
-| Rule Scope | Location |
-| :--- | :--- |
-| `/skills/` | [skills/AGENTS.md](/skills/AGENTS.md) |
-| `opencode-flows` | [opencode-flows/AGENTS.md](/opencode-flows/AGENTS.md) |
-| `src/` | [src/AGENTS.md](/src/AGENTS.md) |
-| `tests/` | [tests/AGENTS.md](/tests/AGENTS.md) |
 
 ## Nested Rules
 
 | Rule Scope | Location |
 |------------|----------|
 | `src/` | [`src/AGENTS.md`](src/AGENTS.md) |
-| `src/bhodi_platform/` | [`src/bhodi_platform/AGENTS.md`](src/bhodi_platform/AGENTS.md) |
+| `src/bodhi_rag/` | [`src/bodhi_rag/AGENTS.md`](src/bodhi_rag/AGENTS.md) |
 | `tests/` | [`tests/AGENTS.md`](tests/AGENTS.md) |
-| `skills/` | [`skills/AGENTS.md`](skills/AGENTS.md) |
 | `opencode-flows/` | [`opencode-flows/AGENTS.md`](opencode-flows/AGENTS.md) |

@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from unittest import TestCase
 
-from bhodi_platform.evaluation.thresholds import (
+from bodhi_rag.evaluation.thresholds import (
     EvaluationBudget,
     GroundingThresholds,
     RetrievalThresholds,
