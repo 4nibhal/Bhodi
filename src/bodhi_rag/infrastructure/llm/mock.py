@@ -12,7 +12,6 @@ from bodhi_rag.infrastructure.tracing import traced
 
 if TYPE_CHECKING:
     from bodhi_rag.application.config import LLMConfig
-    from bodhi_rag.domain.entities import ConversationTurn
     from bodhi_rag.ports.vector_store import RetrievedDocument
 
 
@@ -29,8 +28,8 @@ class MockLLMAdapter:
     @traced("mock.llm.generate")
     async def generate(
         self,
-        prompt: str,
-        **kwargs: str | int | float,
+        _prompt: str,
+        **_kwargs: str | float,
     ) -> str:
         """Return a hardcoded response."""
         return "This is a mock response."
@@ -40,7 +39,7 @@ class MockLLMAdapter:
         self,
         query: str,
         contexts: list[RetrievedDocument],
-        **kwargs: str | int | float,
+        **_kwargs: str | float,
     ) -> str:
         """Return a mock response citing the contexts."""
         context_count = len(contexts)

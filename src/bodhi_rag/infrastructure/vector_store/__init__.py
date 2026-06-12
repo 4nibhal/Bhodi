@@ -1,6 +1,4 @@
-"""
-Vector store adapters.
-"""
+"""Vector store adapters."""
 
 from bodhi_rag.infrastructure.vector_store.in_memory import MockVectorStoreAdapter
 

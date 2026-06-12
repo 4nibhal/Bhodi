@@ -37,9 +37,8 @@ class VolatileConversationMemoryAdapter:
         self._history[key].append(turn)
 
         # Trim if max_history is set
-        if self._max_history is not None:
-            if len(self._history[key]) > self._max_history:
-                self._history[key] = self._history[key][-self._max_history :]
+        if self._max_history is not None and len(self._history[key]) > self._max_history:
+            self._history[key] = self._history[key][-self._max_history :]
 
     async def get_history(
         self,

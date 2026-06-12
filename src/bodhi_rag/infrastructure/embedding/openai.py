@@ -31,14 +31,15 @@ class OpenAIEmbeddingsAdapter:
         self._model = config.model or self.DEFAULT_MODEL
         self._dimensions = config.dimensions or self.DEFAULT_DIMENSIONS
 
-    async def _ensure_client(self):
+    async def _ensure_client(self) -> None:
         """Lazy initialization of OpenAI client."""
         if self._client is None:
             from openai import AsyncOpenAI
 
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
-                raise ValueError("OPENAI_API_KEY environment variable not set")
+                msg = "OPENAI_API_KEY environment variable not set"
+                raise ValueError(msg)
 
             self._client = AsyncOpenAI(api_key=api_key)
 

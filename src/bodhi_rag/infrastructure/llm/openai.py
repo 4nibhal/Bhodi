@@ -31,14 +31,15 @@ class OpenAILLMAdapter:
         self._client = None
         self._model = config.model or self.DEFAULT_MODEL
 
-    async def _ensure_client(self):
+    async def _ensure_client(self) -> None:
         """Lazy initialization of OpenAI client."""
         if self._client is None:
             from openai import AsyncOpenAI
 
             api_key = os.getenv("OPENAI_API_KEY") or self._config.extra.get("api_key")
             if not api_key:
-                raise ValueError("OPENAI_API_KEY environment variable not set")
+                msg = "OPENAI_API_KEY environment variable not set"
+                raise ValueError(msg)
 
             self._client = AsyncOpenAI(api_key=api_key)
 
@@ -46,7 +47,7 @@ class OpenAILLMAdapter:
     async def generate(
         self,
         prompt: str,
-        **kwargs: str | int | float,
+        **kwargs: str | float,
     ) -> str:
         """Generate text from a prompt using OpenAI."""
         await self._ensure_client()
@@ -62,7 +63,8 @@ class OpenAILLMAdapter:
                 max_tokens=max_tokens,
             )
         except Exception as exc:
-            raise LLMError("generate", str(exc)) from exc
+            msg = "generate"
+            raise LLMError(msg, str(exc)) from exc
 
         return response.choices[0].message.content or ""
 
@@ -71,7 +73,7 @@ class OpenAILLMAdapter:
         self,
         query: str,
         contexts: list[RetrievedDocument],
-        **kwargs: str | int | float,
+        **kwargs: str | float,
     ) -> str:
         """Generate answer given a query and retrieved context."""
         context_parts = []

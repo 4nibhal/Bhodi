@@ -9,16 +9,15 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
-from bodhi_rag.domain.entities import Chunk
 from bodhi_rag.domain.exceptions import DocumentNotFoundError
-from bodhi_rag.domain.value_objects import DocumentId
-from bodhi_rag.ports.vector_store import VectorStorePort
 from bodhi_rag.infrastructure.vector_store.safe_chroma_collection import (
     SafeChromaCollection,
 )
 
 if TYPE_CHECKING:
     from bodhi_rag.application.config import VectorStoreConfig
+    from bodhi_rag.domain.entities import Chunk
+    from bodhi_rag.domain.value_objects import DocumentId
 
 
 class ChromaVectorStoreAdapter:
@@ -43,7 +42,7 @@ class ChromaVectorStoreAdapter:
             settings=Settings(anonymized_telemetry=False),
         )
         raw_collection = client.get_or_create_collection(
-            name=self._config.collection_name or "bodhi-rag"
+            name=self._config.collection_name or "bodhi-rag",
         )
         return client, SafeChromaCollection(raw_collection)
 
@@ -51,7 +50,7 @@ class ChromaVectorStoreAdapter:
         """Lazy initialization of Chroma client."""
         if self._client is None:
             self._client, self._collection = await asyncio.to_thread(
-                self._create_client_and_collection
+                self._create_client_and_collection,
             )
 
     async def add(
@@ -122,7 +121,7 @@ class ChromaVectorStoreAdapter:
                         metadata=results["metadatas"][0][i]
                         if results.get("metadatas")
                         else {},
-                    )
+                    ),
                 )
 
         return retrieved
@@ -145,4 +144,3 @@ class ChromaVectorStoreAdapter:
 
     async def persist(self) -> None:
         """Chroma persists automatically with PersistentClient."""
-        pass

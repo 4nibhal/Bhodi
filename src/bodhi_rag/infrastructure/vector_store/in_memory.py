@@ -35,21 +35,21 @@ class MockVectorStoreAdapter:
         embeddings: list[list[float]],
     ) -> None:
         """Store chunks with their embeddings."""
-        for chunk, embedding in zip(chunks, embeddings):
+        for chunk, embedding in zip(chunks, embeddings, strict=False):
             key = str(chunk.id)
             self._chunks[key] = (chunk, embedding)
 
     @traced("mock.vector_store.search")
     async def search(
         self,
-        query_embedding: list[float],
+        _query_embedding: list[float],
         top_k: int,
     ) -> list:
-        """Simple search - return first top_k chunks with fake scores."""
+        """Return first top_k chunks with fake scores."""
         from bodhi_rag.domain.entities import RetrievedDocument
 
         results = []
-        for key, (chunk, embedding) in self._chunks.items():
+        for _key, (chunk, embedding) in self._chunks.items():
             # Fake score based on first dimension
             score = embedding[0] if embedding else 0.0
             results.append(
@@ -59,7 +59,7 @@ class MockVectorStoreAdapter:
                     text=chunk.content,
                     score=score,
                     metadata=chunk.metadata,
-                )
+                ),
             )
 
         # Sort by score descending
@@ -81,4 +81,3 @@ class MockVectorStoreAdapter:
 
     async def persist(self) -> None:
         """No-op for in-memory store."""
-        pass

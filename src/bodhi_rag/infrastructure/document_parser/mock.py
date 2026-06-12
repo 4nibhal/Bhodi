@@ -7,7 +7,7 @@ Returns simple documents without actual parsing.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import BinaryIO, TYPE_CHECKING
+from typing import TYPE_CHECKING, BinaryIO
 
 if TYPE_CHECKING:
     from bodhi_rag.application.config import DocumentParserConfig
@@ -48,7 +48,7 @@ class MockDocumentParserAdapter:
 
     async def extract_text(
         self,
-        source: Path | bytes | BinaryIO,
+        _source: Path | bytes | BinaryIO,
     ) -> str:
         """Return mock text."""
         return "Mock extracted text content."

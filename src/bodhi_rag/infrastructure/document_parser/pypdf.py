@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Any, BinaryIO, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, BinaryIO
 
 from bodhi_rag.domain.entities import Document
 from bodhi_rag.domain.value_objects import DocumentId
@@ -55,7 +55,7 @@ class PyPDFDocumentParserAdapter:
 
     def _parse_text_path_sync(self, path: Path) -> Document:
         metadata = self._build_path_metadata(path, file_type="text")
-        with open(path, "r", encoding="utf-8") as file_handle:
+        with path.open(encoding="utf-8") as file_handle:
             text = file_handle.read()
 
         return Document(
@@ -68,7 +68,7 @@ class PyPDFDocumentParserAdapter:
         import pypdf
 
         metadata = self._build_path_metadata(path, file_type="pdf")
-        with open(path, "rb") as file_handle:
+        with path.open("rb") as file_handle:
             reader = pypdf.PdfReader(file_handle)
             full_text = self._extract_pdf_contents(reader, metadata)
 
@@ -80,6 +80,7 @@ class PyPDFDocumentParserAdapter:
 
     def _parse_bytes_sync(self, source: bytes) -> Document:
         import io
+
         import pypdf
 
         metadata: dict[str, Any] = {
@@ -131,7 +132,8 @@ class PyPDFDocumentParserAdapter:
         if hasattr(source, "read"):
             return await asyncio.to_thread(self._parse_stream_sync, source)
 
-        raise ValueError(f"Unsupported source type: {type(source)}")
+        msg = f"Unsupported source type: {type(source)}"
+        raise ValueError(msg)
 
     @traced("pypdf.extract_text")
     async def extract_text(

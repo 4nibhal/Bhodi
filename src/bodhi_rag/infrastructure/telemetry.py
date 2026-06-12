@@ -6,38 +6,48 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from opentelemetry.trace import Span
-    from opentelemetry.trace import Tracer
+    from collections.abc import AsyncIterator
 
-_tracer: Tracer | None = None
-_enabled: bool = True
+    from opentelemetry.trace import Span, Tracer
+
+
+class _TelemetryState:
+    """Encapsulates mutable module-level telemetry state to avoid `global`."""
+
+    tracer: Tracer | None = None
+    enabled: bool = True
+
+
+_state = _TelemetryState()
 
 
 def get_tracer() -> Tracer:
     """Get or create the tracer."""
-    global _tracer
-    if _tracer is None:
+    if _state.tracer is None:
         from opentelemetry import trace
 
-        _tracer = trace.get_tracer("bodhi-rag")
-    return _tracer
+        _state.tracer = trace.get_tracer("bodhi-rag")
+    return _state.tracer
 
 
-def set_enabled(enabled: bool) -> None:
+def set_enabled(*, enabled: bool) -> None:
     """Enable or disable telemetry."""
-    global _enabled
-    _enabled = enabled
+    _state.enabled = enabled
 
 
 @asynccontextmanager
-async def span(name: str, attributes: dict[str, str | int | float] | None = None):
-    """Create an async span for telemetry.
+async def span(
+    name: str,
+    attributes: dict[str, str | int | float] | None = None,
+) -> AsyncIterator[Span | None]:
+    """
+    Create an async span for telemetry.
 
     Usage:
         async with span("indexing.embed", {"document_id": doc_id}):
             embeddings = await adapter.embed_documents(texts)
     """
-    if not _enabled:
+    if not _state.enabled:
         yield None
         return
 

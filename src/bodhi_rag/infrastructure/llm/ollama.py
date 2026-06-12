@@ -6,7 +6,6 @@ Generates text using Ollama local LLM API.
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 from bodhi_rag.infrastructure.tracing import traced
@@ -32,7 +31,7 @@ class OllamaLLMAdapter:
         self._model = config.model or self.DEFAULT_MODEL
         self._base_url = config.extra.get("base_url", self.DEFAULT_BASE_URL)
 
-    async def _ensure_client(self):
+    async def _ensure_client(self) -> None:
         """Lazy initialization of Ollama client."""
         if self._client is None:
             import httpx
@@ -46,7 +45,7 @@ class OllamaLLMAdapter:
     async def generate(
         self,
         prompt: str,
-        **kwargs: str | int | float,
+        **kwargs: str | float,
     ) -> str:
         """Generate text from a prompt using Ollama."""
         await self._ensure_client()
@@ -76,7 +75,7 @@ class OllamaLLMAdapter:
         self,
         query: str,
         contexts: list[RetrievedDocument],
-        **kwargs: str | int | float,
+        **kwargs: str | float,
     ) -> str:
         """Generate answer given a query and retrieved context."""
         # Build context string from retrieved documents

@@ -43,11 +43,14 @@ class FixedSizeChunkerAdapter:
         ov = overlap if overlap is not None else self._overlap
 
         if size <= 0:
-            raise ValueError("chunk_size must be positive")
+            msg = "chunk_size must be positive"
+            raise ValueError(msg)
         if ov < 0:
-            raise ValueError("overlap must be non-negative")
+            msg = "overlap must be non-negative"
+            raise ValueError(msg)
         if ov >= size:
-            raise ValueError("overlap must be less than chunk_size")
+            msg = "overlap must be less than chunk_size"
+            raise ValueError(msg)
 
         # Collect raw chunks
         raw_chunks: list[str] = []
@@ -101,7 +104,7 @@ class FixedSizeChunkerAdapter:
                     content=chunk_text,
                     chunk_index=index,
                     total_chunks=total_chunks,
-                )
+                ),
             )
 
         return chunks

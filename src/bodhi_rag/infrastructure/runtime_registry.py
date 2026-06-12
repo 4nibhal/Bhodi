@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 from bodhi_rag.infrastructure.lifecycle import ManagedResource
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 RuntimeT = TypeVar("RuntimeT")
 

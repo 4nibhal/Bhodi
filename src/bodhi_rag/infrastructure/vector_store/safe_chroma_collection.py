@@ -29,7 +29,10 @@ The wrapper enforces two invariants:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class SafeChromaCollection:
@@ -52,25 +55,37 @@ class SafeChromaCollection:
             if name == "query":
                 return self._safe_query(method)
             return method
-        raise AttributeError(
+        msg = (
             f"SafeChromaCollection does not expose '{name}'. "
             f"Allowed methods: {sorted(self._ALLOWED_METHODS)}. "
             f"If you need a new method, add it to _ALLOWED_METHODS "
             f"after a security review of its embedding deserialization "
             f"behavior."
         )
+        raise AttributeError(
+            msg,
+        )
 
     @staticmethod
-    def _safe_add(raw_add: Any):
-        def _add(*, ids, embeddings, documents, metadatas):
+    def _safe_add(raw_add: Any) -> Callable[..., Any]:
+        def _add(
+            *,
+            ids: Any,
+            embeddings: Any,
+            documents: Any,
+            metadatas: Any,
+        ) -> Any:
             if embeddings is None:
-                raise ValueError(
+                msg = (
                     "SafeChromaCollection.add: `embeddings` must be pre-"
                     "computed and not None. Passing None would let "
                     "chromadb fall through to "
                     "`CollectionCommon._embed`, which instantiates the "
                     "embedding function from the stored configuration "
                     "(client-side variant of CVE-2026-45829)."
+                )
+                raise ValueError(
+                    msg,
                 )
             return raw_add(
                 ids=ids,
@@ -82,16 +97,19 @@ class SafeChromaCollection:
         return _add
 
     @staticmethod
-    def _safe_query(raw_query: Any):
-        def _query(*, query_embeddings, n_results):
+    def _safe_query(raw_query: Any) -> Callable[..., Any]:
+        def _query(*, query_embeddings: Any, n_results: int) -> Any:
             if query_embeddings is None:
-                raise ValueError(
+                msg = (
                     "SafeChromaCollection.query: `query_embeddings` must "
                     "be pre-computed and not None. Passing None would let "
                     "chromadb fall through to "
                     "`CollectionCommon._embed`, which instantiates the "
                     "embedding function from the stored configuration "
                     "(client-side variant of CVE-2026-45829)."
+                )
+                raise ValueError(
+                    msg,
                 )
             return raw_query(
                 query_embeddings=query_embeddings,

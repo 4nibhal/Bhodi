@@ -7,7 +7,6 @@ This is the new Container that works with the Protocol-based ports.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from bodhi_rag.ports.chunker import ChunkerPort
@@ -18,6 +17,8 @@ from bodhi_rag.ports.llm import LLMPort
 from bodhi_rag.ports.vector_store import VectorStorePort
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from bodhi_rag.application.config import BhodiConfig
     from bodhi_rag.application.facade import BhodiApplication
 
@@ -39,9 +40,10 @@ class Container:
         cls,
         config: BhodiConfig | None = None,
         *,
-        config_path: "str | Path | None" = None,
-    ) -> "Container":
-        """Build a `Container` from a config, an optional config path, or both.
+        config_path: str | Path | None = None,
+    ) -> Container:
+        """
+        Build a `Container` from a config, an optional config path, or both.
 
         When `config` is provided, it is used as-is. When `config_path` is
         provided, `load_bodhi_config(config_path=...)` is called and the
@@ -77,14 +79,14 @@ class Container:
             factory_name = f"_create_{port_type.__name__.replace('Port', '').lower()}_adapter"
             factory = getattr(self, factory_name, None)
             if factory is None:
-                raise ValueError(f"No factory for adapter type: {port_type.__name__}")
+                msg = f"No factory for adapter type: {port_type.__name__}"
+                raise ValueError(msg)
             self._adapters[port_type] = factory()
         return self._adapters[port_type]
 
-    def _create_embedding_adapter(self):
+    def _create_embedding_adapter(self) -> object:
         """Create embedding adapter based on config."""
         from bodhi_rag.infrastructure.embedding.mock import MockEmbeddingAdapter
-        from bodhi_rag.ports.embedding import EmbeddingPort
 
         provider = self._config.embedding.provider.lower()
 
@@ -98,14 +100,14 @@ class Container:
 
             return OpenAIEmbeddingsAdapter(self._config.embedding)
 
-        raise ValueError(f"Unknown embedding provider: {provider}")
+        msg = f"Unknown embedding provider: {provider}"
+        raise ValueError(msg)
 
-    def _create_vectorstore_adapter(self):
+    def _create_vectorstore_adapter(self) -> object:
         """Create vector store adapter based on config."""
         from bodhi_rag.infrastructure.vector_store.in_memory import (
             MockVectorStoreAdapter,
         )
-        from bodhi_rag.ports.vector_store import VectorStorePort
 
         provider = self._config.vector_store.provider.lower()
 
@@ -119,9 +121,10 @@ class Container:
 
             return ChromaVectorStoreAdapter(self._config.vector_store)
 
-        raise ValueError(f"Unknown vector_store provider: {provider}")
+        msg = f"Unknown vector_store provider: {provider}"
+        raise ValueError(msg)
 
-    def _create_chunker_adapter(self):
+    def _create_chunker_adapter(self) -> object:
         """Create chunker adapter based on config."""
         from bodhi_rag.infrastructure.chunker.fixed_size import (
             FixedSizeChunkerAdapter,
@@ -129,7 +132,6 @@ class Container:
         from bodhi_rag.infrastructure.chunker.recursive import (
             RecursiveChunkerAdapter,
         )
-        from bodhi_rag.ports.chunker import ChunkerPort
 
         provider = self._config.chunker.provider.lower()
 
@@ -139,14 +141,14 @@ class Container:
         if provider == "recursive":
             return RecursiveChunkerAdapter(self._config.chunker)
 
-        raise ValueError(f"Unknown chunker provider: {provider}")
+        msg = f"Unknown chunker provider: {provider}"
+        raise ValueError(msg)
 
-    def _create_documentparser_adapter(self):
+    def _create_documentparser_adapter(self) -> object:
         """Create document parser adapter based on config."""
         from bodhi_rag.infrastructure.document_parser.mock import (
             MockDocumentParserAdapter,
         )
-        from bodhi_rag.ports.document_parser import DocumentParserPort
 
         provider = self._config.parser.provider.lower()
 
@@ -160,12 +162,12 @@ class Container:
 
             return PyPDFDocumentParserAdapter(self._config.parser)
 
-        raise ValueError(f"Unknown parser provider: {provider}")
+        msg = f"Unknown parser provider: {provider}"
+        raise ValueError(msg)
 
-    def _create_llm_adapter(self):
+    def _create_llm_adapter(self) -> object:
         """Create LLM adapter based on config."""
         from bodhi_rag.infrastructure.llm.mock import MockLLMAdapter
-        from bodhi_rag.ports.llm import LLMPort
 
         provider = self._config.llm.provider.lower()
 
@@ -182,18 +184,19 @@ class Container:
 
             return OpenAILLMAdapter(self._config.llm)
 
-        raise ValueError(f"Unknown llm provider: {provider}")
+        msg = f"Unknown llm provider: {provider}"
+        raise ValueError(msg)
 
-    def _create_conversationmemory_adapter(self):
+    def _create_conversationmemory_adapter(self) -> object:
         """Create conversation memory adapter based on config."""
         from bodhi_rag.infrastructure.conversation_memory.volatile import (
             VolatileConversationMemoryAdapter,
         )
-        from bodhi_rag.ports.conversation_memory import ConversationMemoryPort
 
         provider = self._config.conversation.provider.lower()
 
         if provider == "volatile":
             return VolatileConversationMemoryAdapter(self._config.conversation)
 
-        raise ValueError(f"Unknown conversation provider: {provider}")
+        msg = f"Unknown conversation provider: {provider}"
+        raise ValueError(msg)

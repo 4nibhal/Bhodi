@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, TypeVar
+from typing import Any, TypeVar
 
-if TYPE_CHECKING:
-    pass
-
-F = TypeVar("F", bound=Callable)
+F = TypeVar("F", bound=Callable[..., Any])
 
 
-def traced(operation_name: str | None = None):
-    """Decorator to trace a function call.
+def traced(operation_name: str | None = None) -> Callable[[F], F]:
+    """
+    Trace a function call.
 
     Usage:
         @traced("embedding.documents")
@@ -22,13 +21,13 @@ def traced(operation_name: str | None = None):
 
     def decorator(func: F) -> F:
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             from bodhi_rag.infrastructure.telemetry import span
 
             name = operation_name or f"{func.__module__}.{func.__name__}"
             async with span(name):
                 return await func(*args, **kwargs)
 
-        return wrapper  # type: ignore
+        return wrapper  # type: ignore[return-value]
 
     return decorator

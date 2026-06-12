@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from threading import Lock
-from typing import Generic, Protocol, TypeVar
+from typing import TYPE_CHECKING, Generic, Protocol, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 ResourceT = TypeVar("ResourceT")
 

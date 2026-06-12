@@ -8,7 +8,7 @@ that still exceed the target chunk size.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from bodhi_rag.domain.entities import Chunk
 from bodhi_rag.domain.value_objects import ChunkId, DocumentId
@@ -28,11 +28,11 @@ class RecursiveChunkerAdapter:
     applies the next smaller separator.
     """
 
-    DEFAULT_CHUNK_SIZE = 512
-    DEFAULT_OVERLAP = 64
+    DEFAULT_CHUNK_SIZE: ClassVar[int] = 512
+    DEFAULT_OVERLAP: ClassVar[int] = 64
 
     # Separators in order of preference (largest boundary first)
-    SEPARATORS = ["\n\n", "\n", ". ", ", ", " "]
+    SEPARATORS: ClassVar[tuple[str, ...]] = ("\n\n", "\n", ". ", ", ", " ")
 
     def __init__(self, config: ChunkerConfig) -> None:
         self._config = config
@@ -60,8 +60,8 @@ class RecursiveChunkerAdapter:
         parts = text.split(separator)
 
         result: list[str] = []
-        for part in parts:
-            part = part.strip()
+        for raw_part in parts:
+            part = raw_part.strip()
             if not part:
                 continue
             if len(part) > self._chunk_size:
@@ -110,7 +110,7 @@ class RecursiveChunkerAdapter:
         return chunks
 
     def _apply_overlap(
-        self, chunks: list[str], chunk_size: int, overlap: int
+        self, chunks: list[str], chunk_size: int, overlap: int,
     ) -> list[str]:
         """Apply overlap between consecutive chunks."""
         if not chunks or overlap <= 0:
@@ -149,11 +149,14 @@ class RecursiveChunkerAdapter:
         ov = overlap if overlap is not None else self._overlap
 
         if size <= 0:
-            raise ValueError("chunk_size must be positive")
+            msg = "chunk_size must be positive"
+            raise ValueError(msg)
         if ov < 0:
-            raise ValueError("overlap must be non-negative")
+            msg = "overlap must be non-negative"
+            raise ValueError(msg)
         if ov >= size:
-            raise ValueError("overlap must be less than chunk_size")
+            msg = "overlap must be less than chunk_size"
+            raise ValueError(msg)
 
         stripped = text.strip() if text else ""
         if not stripped:
@@ -170,7 +173,7 @@ class RecursiveChunkerAdapter:
                     content=stripped,
                     chunk_index=0,
                     total_chunks=1,
-                )
+                ),
             ]
 
         # Recursive split → merge → apply overlap
@@ -196,7 +199,7 @@ class RecursiveChunkerAdapter:
                     content=chunk_text,
                     chunk_index=index,
                     total_chunks=total_chunks,
-                )
+                ),
             )
 
         return chunks
