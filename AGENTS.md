@@ -34,10 +34,6 @@ This file is the root governance contract for bodhi-rag. The product is a backen
 - Separation of Concerns: Product work and AIWF/dev-infra work should stay logically separated unless the change explicitly couples both.
 
 ## Capability Graph
-- @skill/legacy-modernization
-- @skill/rag-quality
-- @skill/python-release-engineering
-- @skill/github-automation
 - @skill/rules-creator
 - @skill/skill-creator
 - @skill/opencode-agent-creator
@@ -52,8 +48,6 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | After creating/modifying a skill | [`skill-sync`](/skills/skill-sync/SKILL.md) |
 | Before creating a commit | [`git-excellence`](/.opencode/skills/git-excellence/SKILL.md) |
 | Before creating a commit or PR | [`git-excellence`](/.opencode/skills/git-excellence/SKILL.md) |
-| Changing chunking, retrieval, reranking, prompting, or answer grounding | [`rag-quality`](/skills/rag-quality/SKILL.md) |
-| Creating PRs, release workflows, Dependabot config, or GitHub automation policies | [`github-automation`](/skills/github-automation/SKILL.md) |
 | Creating new OpenCode sub-agents | [`opencode-agent-creator`](/.opencode/skills/opencode-agent-creator/SKILL.md) |
 | Creating new OpenCode sub-agents | [`opencode-agent-creator`](/skills/opencode-agent-creator/SKILL.md) |
 | Creating or scaffolding new skills | [`skill-creator`](/.opencode/skills/skill-creator/SKILL.md) |
@@ -63,8 +57,6 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | During Pull Request creation | [`git-excellence`](/.opencode/skills/git-excellence/SKILL.md) |
 | Modifying AGENTS.md structure or adding new rules | [`rules-sync`](/.opencode/skills/rules-sync/SKILL.md) |
 | Modifying AGENTS.md structure or adding new rules | [`rules-sync`](/skills/rules-sync/SKILL.md) |
-| Preparing builds, packaging, CI, lockfile policy, or release automation | [`python-release-engineering`](/skills/python-release-engineering/SKILL.md) |
-| Refactoring legacy bodhi-rag modules into the target backend architecture | [`legacy-modernization`](/skills/legacy-modernization/SKILL.md) |
 | Regenerate AGENTS.md Auto-invoke tables (sync.sh) | [`skill-sync`](/.opencode/skills/skill-sync/SKILL.md) |
 | Regenerate AGENTS.md Auto-invoke tables (sync.sh) | [`skill-sync`](/skills/skill-sync/SKILL.md) |
 | Running AIWF init or refining bootstrap intake behavior | [`bootstrap`](/.opencode/skills/bootstrap/SKILL.md) |
