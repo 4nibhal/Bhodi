@@ -411,6 +411,12 @@ Not implemented yet; planned for future releases:
 
 ---
 
+## AI Workflow
+
+The repo ships with a curated set of OpenCode sub-agents that operate over the codebase. Specialized sub-agents (`backend-architect`, `rag-systems-engineer`, `python-quality-engineer`, `github-ops-engineer`) are tracked in [`opencode-flows/agent/`](opencode-flows/agent/). Platform-native agents (`devops-scripter`, `doc-retriever`, `git-specialist`, `tooling-specialist`, `system-architect`) live in the same tracked directory; the runtime mirror at `.opencode/agents/` is gitignored. Governance rules live in `AGENTS.md` at the repo, `src/`, `src/bodhi_rag/`, `tests/`, and `opencode-flows/` scopes — see the Capability Graph and Auto-invoke Skills tables in each `AGENTS.md` for the contract.
+
+---
+
 ## License
 
 MIT — See [LICENSE](LICENSE).
