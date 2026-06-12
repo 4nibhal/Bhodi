@@ -5,11 +5,9 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
-from pathlib import Path
 from typing import TextIO
 
 from bodhi_rag.application.config import BhodiConfig
-from bodhi_rag.application.facade import BhodiApplication
 from bodhi_rag.application.models import IndexDocumentRequest
 from bodhi_rag.infrastructure.container import Container
 
@@ -65,12 +63,12 @@ async def run_index(
 
     try:
         response = await app.index_document(request)
-        return (
+        return (  # noqa: TRY300  # return inside try: index_document can raise; we want the except clause to catch it
             f"Indexed {response.chunk_count} chunks from {source}. "
             f"Document ID: {response.document_id}"
         )
-    except Exception as e:
-        return f"Error indexing {source}: {e}"
+    except Exception as exc:  # noqa: BLE001  # CLI: any failure formats as a user-friendly error string
+        return f"Error indexing {source}: {exc}"
 
 
 def main(
@@ -90,7 +88,6 @@ def main(
         try:
             metadata = json.loads(args.metadata)
         except json.JSONDecodeError:
-            print(f"Error: Invalid JSON in --metadata: {args.metadata}", file=sys.stderr)
             sys.exit(1)
 
     result = asyncio.run(
@@ -99,7 +96,7 @@ def main(
             chunk_size=args.chunk_size,
             overlap=args.overlap,
             metadata=metadata,
-        )
+        ),
     )
     print(result, file=output)
 

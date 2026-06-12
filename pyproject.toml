@@ -134,6 +134,14 @@ ignore = ["D100", "D101", "D102", "D103", "D104", "D105", "D107", "D203", "D212"
 # unused SDKs (openai, chromadb, sentence-transformers, ...) are never
 # loaded when the consumer does not select them.
 "src/bodhi_rag/infrastructure/**/*.py" = ["PLC0415"]
+# Interfaces (FastAPI routes, CLI commands) defer imports of the app
+# container and the bodhi_rag application facade to handler time to
+# break the circular import between `interfaces.api.app` (which
+# includes the routers) and the route modules (which need to call
+# `get_bodhi_rag_app()`). This also keeps `import bodhi_rag.interfaces`
+# cheap: the full CLI/API surface can be imported without dragging in
+# the bodhi-rag application stack.
+"src/bodhi_rag/interfaces/**/*.py" = ["PLC0415"]
 
 [tool.mypy]
 python_version = "3.11"

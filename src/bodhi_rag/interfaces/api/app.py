@@ -12,16 +12,26 @@ import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Awaitable, Callable
+
+    from fastapi.responses import Response
+
+    from bodhi_rag.application.facade import BhodiApplication
+
 from bodhi_rag._version import get_version
 from bodhi_rag.application.config import BhodiConfig
-from bodhi_rag.application.facade import BhodiApplication
 from bodhi_rag.infrastructure.container import Container
 
+if TYPE_CHECKING:
+    from fastapi.responses import Response
+
+    from bodhi_rag.application.facade import BhodiApplication
 
 API_SOURCE_ROOT_ENV = "BODHI_API_SOURCE_ROOT"
 API_ALLOWED_SOURCE_SUFFIXES = frozenset({".pdf", ".txt", ".md", ".rst"})
@@ -50,8 +60,11 @@ RATE_LIMIT_MAX = 100
 RATE_LIMIT_WINDOW = 60  # seconds
 
 
-async def _rate_limit_middleware(request: Request, call_next):
-    """Simple in-memory rate limiter. Skip /health endpoint."""
+async def _rate_limit_middleware(
+    request: Request,
+    call_next: Callable[[Request], Awaitable[Response]],
+) -> Response:
+    """Apply a per-IP rate limit; skip the /health endpoint."""
     if request.url.path == "/health":
         return await call_next(request)
 
@@ -83,11 +96,12 @@ def create_app(config: BhodiConfig | None = None) -> FastAPI:
 
     Returns:
         Configured FastAPI application.
+
     """
 
     @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        """Lifespan context manager for startup/shutdown."""
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        """Initialize and tear down the application state."""
         cfg = config or BhodiConfig()
         container = Container(cfg)
         _state["bodhi_rag_app"] = container.build()
@@ -117,14 +131,14 @@ def create_app(config: BhodiConfig | None = None) -> FastAPI:
 
     # Global exception handler for domain errors
     @app.exception_handler(Exception)
-    async def global_exception_handler(request: Request, exc: Exception):
+    async def global_exception_handler(_request: Request, exc: Exception) -> JSONResponse:
         """Handle uncaught exceptions."""
         return JSONResponse(
             status_code=500,
             content={
                 "detail": str(exc)
                 if not isinstance(exc, Exception)
-                else "Internal server error"
+                else "Internal server error",
             },
         )
 
@@ -136,7 +150,8 @@ def get_bodhi_rag_app() -> BhodiApplication:
     """Get the BhodiApplication instance."""
     app = _state.get("bodhi_rag_app")
     if app is None:
-        raise RuntimeError("Application not initialized")
+        msg = "Application not initialized"
+        raise RuntimeError(msg)
     return app
 
 
@@ -144,5 +159,6 @@ def get_api_source_policy() -> ApiSourcePolicy:
     """Get the API-local source policy."""
     policy = _state.get("source_policy")
     if policy is None:
-        raise RuntimeError("Application not initialized")
+        msg = "Application not initialized"
+        raise RuntimeError(msg)
     return policy

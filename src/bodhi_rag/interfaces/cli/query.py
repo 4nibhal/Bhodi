@@ -8,7 +8,6 @@ import sys
 from typing import TextIO
 
 from bodhi_rag.application.config import BhodiConfig
-from bodhi_rag.application.facade import BhodiApplication
 from bodhi_rag.application.models import QueryRequest
 from bodhi_rag.infrastructure.container import Container
 
@@ -76,8 +75,8 @@ async def run_query(
             lines.append(f"\nConversation ID: {response.conversation_id}")
 
         return "\n".join(lines)
-    except Exception as e:
-        return f"Error querying: {e}"
+    except Exception as exc:  # noqa: BLE001  # CLI: any failure formats as a user-friendly error string
+        return f"Error querying: {exc}"
 
 
 def main(
@@ -95,7 +94,7 @@ def main(
             conversation_id=args.conversation_id,
             top_k=args.top_k,
             temperature=args.temperature,
-        )
+        ),
     )
     print(result, file=output)
 

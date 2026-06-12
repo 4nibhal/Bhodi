@@ -32,7 +32,8 @@ def main() -> None:
     try:
         load_bodhi_config()
     except ConfigError as exc:
-        raise SystemExit(f"Config error: {exc}") from exc
+        msg = f"Config error: {exc}"
+        raise SystemExit(msg) from exc
 
     uvicorn.run(
         "bodhi_rag.interfaces.api.app:create_app",

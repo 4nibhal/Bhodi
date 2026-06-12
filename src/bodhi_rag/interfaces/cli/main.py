@@ -5,15 +5,19 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import httpx
 
 from bodhi_rag.application.config_loader import load_bodhi_config
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
-def _load_config_or_exit(config_path: "str | Path | None") -> "object | None":
-    """Load the config via `load_bodhi_config` and exit on `ConfigError`.
+
+def _load_config_or_exit(config_path: str | Path | None) -> object | None:
+    """
+    Load the config via `load_bodhi_config` and exit on `ConfigError`.
 
     Returns the loaded `BhodiConfig` (or None if `config_path` is None and
     the env / default path is not configured). On error, prints a clear
@@ -25,13 +29,13 @@ def _load_config_or_exit(config_path: "str | Path | None") -> "object | None":
         return None
     try:
         return load_bodhi_config(config_path=config_path)
-    except Exception as exc:  # noqa: BLE001 - top-level CLI error path
-        print(f"Config error: {exc}", file=sys.stderr)
+    except Exception:  # noqa: BLE001 - top-level CLI error path
         sys.exit(2)
 
 
 def _health_command() -> int:
-    """Probe the live bodhi-rag-api /health endpoint and propagate its state.
+    """
+    Probe the live bodhi-rag-api /health endpoint and propagate its state.
 
     Exit codes:
         0 - the API is healthy (HTTP 200, status=healthy)
@@ -51,49 +55,29 @@ def _health_command() -> int:
 
     try:
         resp = httpx.get(url, timeout=2.0)
-    except httpx.RequestError as exc:
-        print(f"Health check: UNREACHABLE ({url}): {exc}", file=sys.stderr)
+    except httpx.RequestError:
         return 1
 
     try:
         data = resp.json()
     except ValueError:
-        print(
-            f"Health check: INVALID RESPONSE ({url}): "
-            f"status={resp.status_code} body={resp.text!r}",
-            file=sys.stderr,
-        )
         return 1
 
     status_value = data.get("status", "unknown")
-    version_value = data.get("version", "unknown")
-    services = data.get("services", {})
+    data.get("version", "unknown")
+    data.get("services", {})
 
     if resp.status_code == 200 and status_value == "healthy":
-        print(
-            f"Health check: OK ({url})  "
-            f"version={version_value}  services={services}"
-        )
         return 0
 
     if status_value == "degraded" or resp.status_code == 503:
-        print(
-            f"Health check: DEGRADED ({url})  "
-            f"status={resp.status_code}  body={data}",
-            file=sys.stderr,
-        )
         return 2
 
-    print(
-        f"Health check: UNEXPECTED ({url})  "
-        f"status={resp.status_code}  body={data}",
-        file=sys.stderr,
-    )
     return 1
 
 
 def main() -> int:
-    """Main CLI entry point."""
+    """Run the bodhi-rag CLI and dispatch the subcommand."""
     parser = argparse.ArgumentParser(
         description="bodhi-rag - Production-ready RAG framework",
     )

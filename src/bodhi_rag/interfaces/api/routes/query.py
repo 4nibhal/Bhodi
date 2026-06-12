@@ -1,6 +1,6 @@
 """Query endpoint."""
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, status
 
 from bodhi_rag.application.models import QueryRequest, QueryResponse
 
@@ -19,13 +19,13 @@ async def query(request: QueryRequest) -> QueryResponse:
     app = get_bodhi_rag_app()
     try:
         return await app.query(request)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception:
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as err:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
-        )
+        ) from err
 
 
 @router.get("/conversations/{conversation_id}", status_code=status.HTTP_200_OK)
@@ -35,8 +35,8 @@ async def get_conversation(conversation_id: str) -> dict:
 
     Returns all turns in a conversation.
     """
-    from bodhi_rag.interfaces.api.app import get_bodhi_rag_app
     from bodhi_rag.domain.value_objects import ConversationId
+    from bodhi_rag.interfaces.api.app import get_bodhi_rag_app
 
     app = get_bodhi_rag_app()
     try:
@@ -53,10 +53,10 @@ async def get_conversation(conversation_id: str) -> dict:
                 for turn in history
             ],
         }
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception:
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as err:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
-        )
+        ) from err
