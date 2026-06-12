@@ -22,9 +22,9 @@ This scope governs automated verification for bodhi-rag product code and migrati
 - CI should be able to run baseline tests through `uv` without requiring local ad hoc setup.
 
 ## Capability Graph
-- @skill/legacy-modernization
-- @skill/rag-quality
-- @skill/python-release-engineering
+- @skill/rules-creator
+- @skill/skill-creator
+- @skill/opencode-agent-creator
 
 ## Delegation & Boundaries
 - Inheritance: Inherits from @rules/root.

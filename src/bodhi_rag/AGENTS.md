@@ -29,9 +29,9 @@ This scope defines the target backend architecture for bodhi-rag. It is the pref
 - Services must be composable for API and CLI consumers.
 
 ## Capability Graph
-- @skill/legacy-modernization
-- @skill/rag-quality
-- @skill/python-release-engineering
+- @skill/rules-creator
+- @skill/skill-creator
+- @skill/opencode-agent-creator
 
 ## Delegation & Boundaries
 

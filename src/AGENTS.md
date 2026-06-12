@@ -22,9 +22,9 @@ This scope governs all shipped product code under `src/`. bodhi-rag is a modular
 - Keep filesystem paths, model selection, and device configuration environment-driven.
 
 ## Capability Graph
-- @skill/legacy-modernization
-- @skill/rag-quality
-- @skill/python-release-engineering
+- @skill/rules-creator
+- @skill/skill-creator
+- @skill/opencode-agent-creator
 
 ## Development Guidelines
 - Runtime/Environment: Python with `uv`, reproducible lockfile, explicit dependency groups.
