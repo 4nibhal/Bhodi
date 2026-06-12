@@ -3,8 +3,8 @@ from bodhi_rag.evaluation.loader import load_fixture
 from bodhi_rag.evaluation.models import (
     EvaluationFixture,
     GroundingCase,
-    RetrievedArtifact,
     RetrievalCase,
+    RetrievedArtifact,
 )
 from bodhi_rag.evaluation.scoring import (
     GroundingCaseScore,
@@ -30,11 +30,11 @@ __all__ = [
     "GroundingCaseScore",
     "GroundingSuiteScore",
     "GroundingThresholds",
-    "RetrievedArtifact",
     "RetrievalCase",
     "RetrievalCaseScore",
     "RetrievalSuiteScore",
     "RetrievalThresholds",
+    "RetrievedArtifact",
     "load_fixture",
     "score_grounding_case",
     "score_grounding_suite",

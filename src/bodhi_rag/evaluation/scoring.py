@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-from bodhi_rag.evaluation.models import (
-    GroundingCase,
-    RetrievedArtifact,
-    RetrievalCase,
-)
+if TYPE_CHECKING:
+    from bodhi_rag.evaluation.models import (
+        GroundingCase,
+        RetrievalCase,
+        RetrievedArtifact,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,7 +66,8 @@ class GroundingSuiteScore:
 
     @property
     def supported_fact_recall(self) -> float:
-        """Return the supported fact recall: grounded_cases / total_cases.
+        """
+        Return the supported fact recall: grounded_cases / total_cases.
 
         This measures the fraction of cases where all required sources are supported.
         """

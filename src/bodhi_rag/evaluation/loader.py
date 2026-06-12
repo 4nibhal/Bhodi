@@ -24,14 +24,16 @@ def load_fixture(name: str = "retrieval_grounding_baseline.json") -> EvaluationF
 def _parse_fixture(payload: dict[str, Any]) -> EvaluationFixture:
     name = payload.get("name")
     if not isinstance(name, str) or name == "":
-        raise ValueError("Evaluation fixture must define a non-empty name.")
+        msg = "Evaluation fixture must define a non-empty name."
+        raise ValueError(msg)
 
     raw_retrieval_cases = payload.get("retrieval_cases", [])
     raw_grounding_cases = payload.get("grounding_cases", [])
     if not isinstance(raw_retrieval_cases, list) or not isinstance(
-        raw_grounding_cases, list
+        raw_grounding_cases, list,
     ):
-        raise ValueError("Fixture cases must be provided as lists.")
+        msg = "Fixture cases must be provided as lists."
+        raise TypeError(msg)
 
     retrieval_cases = tuple(
         RetrievalCase(
@@ -59,7 +61,8 @@ def _parse_fixture(payload: dict[str, Any]) -> EvaluationFixture:
 def _required_text(payload: dict[str, Any], key: str) -> str:
     value = payload.get(key)
     if not isinstance(value, str) or value == "":
-        raise ValueError(f"Expected non-empty string for {key!r}.")
+        msg = f"Expected non-empty string for {key!r}."
+        raise ValueError(msg)
     return value
 
 
@@ -67,11 +70,13 @@ def _text_tuple(values: Any) -> tuple[str, ...]:
     if not isinstance(values, list) or any(
         not isinstance(item, str) for item in values
     ):
-        raise ValueError("Fixture list values must all be strings.")
+        msg = "Fixture list values must all be strings."
+        raise ValueError(msg)
     return tuple(values)
 
 
 def _case_dicts(values: list[Any]) -> list[dict[str, Any]]:
     if any(not isinstance(item, dict) for item in values):
-        raise ValueError("Fixture cases must be objects.")
+        msg = "Fixture cases must be objects."
+        raise ValueError(msg)
     return values
