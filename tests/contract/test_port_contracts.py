@@ -14,12 +14,12 @@ from bodhi_rag.ports.embedding import EmbeddingPort
 from bodhi_rag.ports.vector_store import VectorStorePort
 from bodhi_rag.ports.chunker import ChunkerPort
 from bodhi_rag.ports.llm import LLMPort
-from bodhi_rag.ports.conversation_memory import ConversationMemoryPort
+from bodhi_rag.conversation.ports.memory import ConversationMemoryPort
 from bodhi_rag.infrastructure.embedding.mock import MockEmbeddingAdapter
 from bodhi_rag.infrastructure.vector_store.in_memory import MockVectorStoreAdapter
 from bodhi_rag.infrastructure.chunker.fixed_size import FixedSizeChunkerAdapter
 from bodhi_rag.infrastructure.llm.mock import MockLLMAdapter
-from bodhi_rag.infrastructure.conversation_memory.volatile import (
+from bodhi_rag.conversation.infrastructure.volatile import (
     VolatileConversationMemoryAdapter,
 )
 

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from bodhi_rag.indexing.ports import DocumentLoader
-from bodhi_rag.indexing.settings import IndexingSettings
-
+if TYPE_CHECKING:
+    from bodhi_rag.indexing.ports import DocumentLoader
+    from bodhi_rag.indexing.settings import IndexingSettings
 
 TEXT_GLOB = "**/*.{txt,md,py,js,ts,cpp,java,go,rs}"
 PDF_GLOB = "**/*.pdf"

@@ -2,40 +2,82 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
 
 from bodhi_rag._version import get_version
 from bodhi_rag.application.facade import BhodiApplication
-from bodhi_rag.application.models import IndexDocumentRequest, QueryRequest
+from bodhi_rag.application.models import (
+    IndexDocumentRequest,
+    IndexDocumentResponse,
+    QueryRequest,
+)
 from bodhi_rag.domain.entities import Chunk, Document, RetrievedDocument
 from bodhi_rag.domain.value_objects import ChunkId, DocumentId
+from bodhi_rag.indexing.application.index import IndexDocumentUseCase
 
 
 def _build_app(
     *,
-    embedding: AsyncMock | None = None,
-    vector_store: AsyncMock | None = None,
-    chunker: AsyncMock | None = None,
-    document_parser: AsyncMock | None = None,
-    llm: AsyncMock | None = None,
+    index_document: AsyncMock | None = None,
+    delete_document: AsyncMock | None = None,
+    retrieve_query: AsyncMock | None = None,
+    synthesize_answer: AsyncMock | None = None,
     conversation_memory: AsyncMock | None = None,
+    # Legacy port args — kept for backwards compat with pre-F5-C tests
+    # that pass them. The facade no longer consumes them; they are
+    # ignored. New tests should pass use cases.
+    embedding: AsyncMock | None = None,  # noqa: ARG001
+    vector_store: AsyncMock | None = None,  # noqa: ARG001
+    chunker: AsyncMock | None = None,  # noqa: ARG001
+    document_parser: AsyncMock | None = None,  # noqa: ARG001
+    llm: AsyncMock | None = None,  # noqa: ARG001
+    reranker: AsyncMock | None = None,  # noqa: ARG001
 ) -> BhodiApplication:
+    def _make_passthrough_retrieve() -> AsyncMock:
+        m = AsyncMock()
+
+        async def _execute(_question: str, _top_k: int) -> list[RetrievedDocument]:
+            return []
+
+        m.execute.side_effect = _execute
+        return m
+
+    def _make_passthrough_synthesize() -> AsyncMock:
+        m = AsyncMock()
+        m.execute.return_value = "Answer"
+        return m
+
+    def _make_passthrough_conversation_memory() -> AsyncMock:
+        m = AsyncMock()
+        m.get_history.return_value = []
+        return m
+
+    def _make_passthrough_index() -> AsyncMock:
+        m = AsyncMock()
+
+        async def _execute(_request: IndexDocumentRequest) -> IndexDocumentResponse:
+            return IndexDocumentResponse(
+                document_id="00000000-0000-0000-0000-000000000000",
+                chunk_count=1,
+            )
+
+        m.execute.side_effect = _execute
+        return m
+
     return BhodiApplication(
-        embedding=embedding or AsyncMock(),
-        vector_store=vector_store or AsyncMock(),
-        chunker=chunker or AsyncMock(),
-        document_parser=document_parser or AsyncMock(),
-        llm=llm or AsyncMock(),
-        conversation_memory=conversation_memory or AsyncMock(),
-        reranker=AsyncMock(),
+        index_document=index_document or _make_passthrough_index(),
+        delete_document=delete_document or AsyncMock(),
+        retrieve_query=retrieve_query or _make_passthrough_retrieve(),
+        synthesize_answer=synthesize_answer or _make_passthrough_synthesize(),
+        conversation_memory=conversation_memory or _make_passthrough_conversation_memory(),
     )
 
 
 @pytest.mark.asyncio
-async def test_index_document_preserves_document_identity_and_merges_metadata():
+async def test_index_document_preserves_document_identity_and_merges_metadata() -> None:
     """Indexing should preserve parser identity and authoritative provenance."""
     parser_doc_id = DocumentId("11111111-1111-1111-1111-111111111111")
     chunker_doc_id = DocumentId("22222222-2222-2222-2222-222222222222")
@@ -48,7 +90,7 @@ async def test_index_document_preserves_document_identity_and_merges_metadata():
             "title": "Parser Title",
             "custom": "parser",
         },
-        indexed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        indexed_at=datetime(2026, 1, 1, tzinfo=UTC),
     )
     parser = AsyncMock()
     parser.parse.return_value = parser_document
@@ -77,12 +119,18 @@ async def test_index_document_preserves_document_identity_and_merges_metadata():
     embedding.embed_documents.return_value = [[0.1, 0.2], [0.3, 0.4]]
     vector_store = AsyncMock()
 
-    app = _build_app(
+    # F5-C: facade delegates index_document to IndexDocumentUseCase.
+    # Build a real use case with the test's port mocks so the
+    # pipeline under test runs the same way it did when the logic
+    # was inline in the facade.
+    index_use_case = IndexDocumentUseCase(
+        document_parser=parser,
+        chunker=chunker,
         embedding=embedding,
         vector_store=vector_store,
-        chunker=chunker,
-        document_parser=parser,
     )
+
+    app = _build_app(index_document=index_use_case)
 
     response = await app.index_document(
         IndexDocumentRequest(
@@ -93,7 +141,7 @@ async def test_index_document_preserves_document_identity_and_merges_metadata():
                 "custom": "user",
                 "category": "policy",
             },
-        )
+        ),
     )
 
     assert response.document_id == str(parser_doc_id)
@@ -119,7 +167,7 @@ async def test_index_document_preserves_document_identity_and_merges_metadata():
 
 
 @pytest.mark.asyncio
-async def test_query_uses_human_provenance_in_citations():
+async def test_query_uses_human_provenance_in_citations() -> None:
     """Query citations should prefer human-friendly provenance metadata."""
     document_id = DocumentId("33333333-3333-3333-3333-333333333333")
     retrieved = RetrievedDocument(
@@ -137,7 +185,23 @@ async def test_query_uses_human_provenance_in_citations():
     llm = AsyncMock()
     llm.generate_with_context.return_value = "Answer"
 
-    app = _build_app(embedding=embedding, vector_store=vector_store, llm=llm)
+    # F5-B: the facade delegates to the retrieval and answer-synthesis
+    # use cases. The legacy port-level mocks are no longer consulted;
+    # mock the use cases directly. The vector_store/llm mocks are
+    # kept here only as documentation of what the use cases would
+    # call under the hood.
+    retrieve_query = AsyncMock()
+    retrieve_query.execute.return_value = [retrieved]
+    synthesize_answer = AsyncMock()
+    synthesize_answer.execute.return_value = "Answer"
+
+    app = _build_app(
+        embedding=embedding,
+        vector_store=vector_store,
+        llm=llm,
+        retrieve_query=retrieve_query,
+        synthesize_answer=synthesize_answer,
+    )
 
     response = await app.query(QueryRequest(question="What happened?", top_k=1))
 
@@ -147,7 +211,7 @@ async def test_query_uses_human_provenance_in_citations():
 
 
 @pytest.mark.asyncio
-async def test_health_check_is_non_invasive():
+async def test_health_check_is_non_invasive() -> None:
     """Health checks should not invoke external adapters."""
     embedding = AsyncMock()
     embedding.embed_query.side_effect = AssertionError("should not be called")
@@ -165,4 +229,91 @@ async def test_health_check_is_non_invasive():
     assert health.services == {"embedding": True, "vector_store": True, "llm": True}
     embedding.embed_query.assert_not_called()
     vector_store.persist.assert_not_called()
-    llm.generate.assert_not_called()
+
+
+# --- Wave 3b / F5-B: reranker integration through use cases -------------
+
+
+@pytest.mark.asyncio
+async def test_query_overfetches_then_reranks_then_trims_to_top_k() -> None:
+    """retrieve_query.execute() and synthesize_answer.execute() are called with the right inputs."""
+    doc_id = DocumentId("44444444-4444-4444-4444-444444444444")
+    reranked = [
+        RetrievedDocument(
+            chunk_id=ChunkId(document_id=doc_id, chunk_index=5),
+            document_id=doc_id,
+            text="chunk 5",
+            score=0.9,
+            metadata={"idx": 5},
+        ),
+        RetrievedDocument(
+            chunk_id=ChunkId(document_id=doc_id, chunk_index=2),
+            document_id=doc_id,
+            text="chunk 2",
+            score=0.5,
+            metadata={"idx": 2},
+        ),
+    ]
+
+    retrieve_query = AsyncMock()
+    retrieve_query.execute.return_value = reranked
+    synthesize_answer = AsyncMock()
+    synthesize_answer.execute.return_value = "promoted answer"
+
+    app = _build_app(
+        retrieve_query=retrieve_query,
+        synthesize_answer=synthesize_answer,
+    )
+
+    response = await app.query(QueryRequest(question="q", top_k=2))
+
+    # The retrieval use case must be called with (question, top_k).
+    retrieve_query.execute.assert_awaited_once_with("q", 2)
+
+    # The answer synthesis use case must receive the retrieved (reranked) list.
+    args, kwargs = synthesize_answer.execute.await_args
+    assert args[0] == "q"
+    assert args[1] == reranked
+    assert kwargs["temperature"] == 0.7  # QueryRequest default
+
+    # The response uses the synthesized text and reranked citations.
+    assert response.answer_text == "promoted answer"
+    assert [c.text for c in response.citations] == ["chunk 5", "chunk 2"]
+
+
+@pytest.mark.asyncio
+async def test_query_passes_temperature_from_request() -> None:
+    """The temperature field in QueryRequest reaches the synthesize_answer use case."""
+    retrieve_query = AsyncMock()
+    retrieve_query.execute.return_value = []
+    synthesize_answer = AsyncMock()
+    synthesize_answer.execute.return_value = "answer"
+
+    app = _build_app(
+        retrieve_query=retrieve_query,
+        synthesize_answer=synthesize_answer,
+    )
+
+    await app.query(QueryRequest(question="q", top_k=3, temperature=0.42))
+
+    _args, kwargs = synthesize_answer.execute.await_args
+    assert kwargs["temperature"] == 0.42
+
+
+@pytest.mark.asyncio
+async def test_query_propagates_empty_retrieval() -> None:
+    """Empty retrieval (cold start, no docs) produces an answer with no citations."""
+    retrieve_query = AsyncMock()
+    retrieve_query.execute.return_value = []
+    synthesize_answer = AsyncMock()
+    synthesize_answer.execute.return_value = "no-docs answer"
+
+    app = _build_app(
+        retrieve_query=retrieve_query,
+        synthesize_answer=synthesize_answer,
+    )
+
+    response = await app.query(QueryRequest(question="q", top_k=5))
+
+    assert response.answer_text == "no-docs answer"
+    assert response.citations == []

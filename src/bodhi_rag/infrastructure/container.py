@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from bodhi_rag.conversation.ports.memory import ConversationMemoryPort
 from bodhi_rag.ports.chunker import ChunkerPort
-from bodhi_rag.ports.conversation_memory import ConversationMemoryPort
 from bodhi_rag.ports.document_parser import DocumentParserPort
 from bodhi_rag.ports.embedding import EmbeddingPort
 from bodhi_rag.ports.llm import LLMPort
@@ -63,16 +63,44 @@ class Container:
 
     def build(self) -> BhodiApplication:
         """Build and return a fully wired BhodiApplication."""
+        from bodhi_rag.answering.application.synthesize import (
+            SynthesizeAnswerUseCase,
+        )
         from bodhi_rag.application.facade import BhodiApplication
+        from bodhi_rag.conversation.application.memory import (
+            ConversationMemoryUseCase,
+        )
+        from bodhi_rag.indexing.application.delete import (
+            DeleteDocumentUseCase,
+        )
+        from bodhi_rag.indexing.application.index import (
+            IndexDocumentUseCase,
+        )
+        from bodhi_rag.retrieval.application.retrieve import (
+            RetrieveQueryUseCase,
+        )
 
         return BhodiApplication(
-            embedding=self._get_adapter(EmbeddingPort),
-            vector_store=self._get_adapter(VectorStorePort),
-            chunker=self._get_adapter(ChunkerPort),
-            document_parser=self._get_adapter(DocumentParserPort),
-            llm=self._get_adapter(LLMPort),
-            conversation_memory=self._get_adapter(ConversationMemoryPort),
-            reranker=self._get_adapter(RerankerPort),
+            index_document=IndexDocumentUseCase(
+                document_parser=self._get_adapter(DocumentParserPort),
+                chunker=self._get_adapter(ChunkerPort),
+                embedding=self._get_adapter(EmbeddingPort),
+                vector_store=self._get_adapter(VectorStorePort),
+            ),
+            delete_document=DeleteDocumentUseCase(
+                vector_store=self._get_adapter(VectorStorePort),
+            ),
+            retrieve_query=RetrieveQueryUseCase(
+                embedding=self._get_adapter(EmbeddingPort),
+                vector_store=self._get_adapter(VectorStorePort),
+                reranker=self._get_adapter(RerankerPort),
+            ),
+            synthesize_answer=SynthesizeAnswerUseCase(
+                llm=self._get_adapter(LLMPort),
+            ),
+            conversation_memory=ConversationMemoryUseCase(
+                self._get_adapter(ConversationMemoryPort),
+            ),
         )
 
     def _get_adapter(self, port_type: type) -> object:
@@ -191,7 +219,7 @@ class Container:
 
     def _create_conversationmemory_adapter(self) -> object:
         """Create conversation memory adapter based on config."""
-        from bodhi_rag.infrastructure.conversation_memory.volatile import (
+        from bodhi_rag.conversation.infrastructure.volatile import (
             VolatileConversationMemoryAdapter,
         )
 
@@ -213,7 +241,7 @@ class Container:
         provider = self._config.reranker.provider.lower()
 
         if provider == "noop":
-            return NoOpReranker()
+            return NoOpReranker(self._config.reranker)
 
         if provider == "cross_encoder":
             return CrossEncoderReranker(self._config.reranker)

@@ -4,7 +4,6 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-
 DEFAULT_PERSIST_DIRECTORY_NAME = "chroma_db"
 
 
@@ -16,12 +15,12 @@ class IndexingSettings:
     chunk_overlap: int = 200
 
     @classmethod
-    def from_environment(cls, cwd: Path | None = None) -> "IndexingSettings":
+    def from_environment(cls, cwd: Path | None = None) -> IndexingSettings:
         base_directory = cwd or Path.cwd()
         persist_directory = Path(
             os.getenv(
                 "BODHI_INDEX_PERSIST_DIRECTORY",
                 str(base_directory / DEFAULT_PERSIST_DIRECTORY_NAME),
-            )
+            ),
         )
         return cls(persist_directory=persist_directory)

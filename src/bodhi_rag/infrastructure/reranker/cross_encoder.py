@@ -59,7 +59,13 @@ class CrossEncoderReranker:
 
         self._model_name = config.model.strip()
         self._batch_size = config.batch_size
+        self._overfetch_factor = config.overfetch_factor
         self._encoder: CrossEncoder | None = None
+
+    @property
+    def overfetch_factor(self) -> int:
+        """Return the configured overfetch factor for the query pipeline."""
+        return self._overfetch_factor
 
     def _ensure_encoder(self) -> CrossEncoder:
         """Lazily import and instantiate the CrossEncoder on first use."""
