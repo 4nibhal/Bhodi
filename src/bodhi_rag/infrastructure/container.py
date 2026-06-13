@@ -70,16 +70,26 @@ class Container:
         from bodhi_rag.conversation.application.memory import (
             ConversationMemoryUseCase,
         )
+        from bodhi_rag.indexing.application.delete import (
+            DeleteDocumentUseCase,
+        )
+        from bodhi_rag.indexing.application.index import (
+            IndexDocumentUseCase,
+        )
         from bodhi_rag.retrieval.application.retrieve import (
             RetrieveQueryUseCase,
         )
 
         return BhodiApplication(
-            embedding=self._get_adapter(EmbeddingPort),
-            vector_store=self._get_adapter(VectorStorePort),
-            chunker=self._get_adapter(ChunkerPort),
-            document_parser=self._get_adapter(DocumentParserPort),
-            llm=self._get_adapter(LLMPort),
+            index_document=IndexDocumentUseCase(
+                document_parser=self._get_adapter(DocumentParserPort),
+                chunker=self._get_adapter(ChunkerPort),
+                embedding=self._get_adapter(EmbeddingPort),
+                vector_store=self._get_adapter(VectorStorePort),
+            ),
+            delete_document=DeleteDocumentUseCase(
+                vector_store=self._get_adapter(VectorStorePort),
+            ),
             retrieve_query=RetrieveQueryUseCase(
                 embedding=self._get_adapter(EmbeddingPort),
                 vector_store=self._get_adapter(VectorStorePort),

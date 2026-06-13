@@ -9,35 +9,33 @@ import pytest
 
 from bodhi_rag._version import get_version
 from bodhi_rag.application.facade import BhodiApplication
-from bodhi_rag.application.models import IndexDocumentRequest, QueryRequest
+from bodhi_rag.application.models import (
+    IndexDocumentRequest,
+    IndexDocumentResponse,
+    QueryRequest,
+)
 from bodhi_rag.domain.entities import Chunk, Document, RetrievedDocument
 from bodhi_rag.domain.value_objects import ChunkId, DocumentId
+from bodhi_rag.indexing.application.index import IndexDocumentUseCase
 
 
 def _build_app(
     *,
-    embedding: AsyncMock | None = None,
-    vector_store: AsyncMock | None = None,
-    chunker: AsyncMock | None = None,
-    document_parser: AsyncMock | None = None,
-    llm: AsyncMock | None = None,
-    conversation_memory: AsyncMock | None = None,
-    reranker: AsyncMock | None = None,  # noqa: ARG001  # kept for Wave 3b test signatures
+    index_document: AsyncMock | None = None,
+    delete_document: AsyncMock | None = None,
     retrieve_query: AsyncMock | None = None,
     synthesize_answer: AsyncMock | None = None,
+    conversation_memory: AsyncMock | None = None,
+    # Legacy port args — kept for backwards compat with pre-F5-C tests
+    # that pass them. The facade no longer consumes them; they are
+    # ignored. New tests should pass use cases.
+    embedding: AsyncMock | None = None,  # noqa: ARG001
+    vector_store: AsyncMock | None = None,  # noqa: ARG001
+    chunker: AsyncMock | None = None,  # noqa: ARG001
+    document_parser: AsyncMock | None = None,  # noqa: ARG001
+    llm: AsyncMock | None = None,  # noqa: ARG001
+    reranker: AsyncMock | None = None,  # noqa: ARG001
 ) -> BhodiApplication:
-    # F5-B: facade takes use cases for the query path. Build default
-    # AsyncMock-based use cases that passthrough their input when the
-    # test doesn't supply a custom one, so legacy tests that don't
-    # care about the bounded context wiring still work end-to-end.
-    def _make_passthrough_rerank() -> AsyncMock:
-        m = AsyncMock()
-        m.overfetch_factor = 1
-        m.rerank.side_effect = (
-            lambda _q, chunks, top_k=None: list(chunks if top_k is None else chunks[:top_k])
-        )
-        return m
-
     def _make_passthrough_retrieve() -> AsyncMock:
         m = AsyncMock()
 
@@ -57,12 +55,21 @@ def _build_app(
         m.get_history.return_value = []
         return m
 
+    def _make_passthrough_index() -> AsyncMock:
+        m = AsyncMock()
+
+        async def _execute(_request: IndexDocumentRequest) -> IndexDocumentResponse:
+            return IndexDocumentResponse(
+                document_id="00000000-0000-0000-0000-000000000000",
+                chunk_count=1,
+            )
+
+        m.execute.side_effect = _execute
+        return m
+
     return BhodiApplication(
-        embedding=embedding or AsyncMock(),
-        vector_store=vector_store or AsyncMock(),
-        chunker=chunker or AsyncMock(),
-        document_parser=document_parser or AsyncMock(),
-        llm=llm or AsyncMock(),
+        index_document=index_document or _make_passthrough_index(),
+        delete_document=delete_document or AsyncMock(),
         retrieve_query=retrieve_query or _make_passthrough_retrieve(),
         synthesize_answer=synthesize_answer or _make_passthrough_synthesize(),
         conversation_memory=conversation_memory or _make_passthrough_conversation_memory(),
@@ -112,12 +119,18 @@ async def test_index_document_preserves_document_identity_and_merges_metadata() 
     embedding.embed_documents.return_value = [[0.1, 0.2], [0.3, 0.4]]
     vector_store = AsyncMock()
 
-    app = _build_app(
+    # F5-C: facade delegates index_document to IndexDocumentUseCase.
+    # Build a real use case with the test's port mocks so the
+    # pipeline under test runs the same way it did when the logic
+    # was inline in the facade.
+    index_use_case = IndexDocumentUseCase(
+        document_parser=parser,
+        chunker=chunker,
         embedding=embedding,
         vector_store=vector_store,
-        chunker=chunker,
-        document_parser=parser,
     )
+
+    app = _build_app(index_document=index_use_case)
 
     response = await app.index_document(
         IndexDocumentRequest(

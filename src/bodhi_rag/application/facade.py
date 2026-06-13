@@ -14,17 +14,14 @@ from bodhi_rag.application.models import (
     QueryRequest,
     QueryResponse,
 )
-from bodhi_rag.domain.entities import Chunk, ConversationTurn, Document, RetrievedDocument
-from bodhi_rag.domain.value_objects import ChunkId, ConversationId, DocumentId
 
 if TYPE_CHECKING:
     from bodhi_rag.answering.application.synthesize import SynthesizeAnswerUseCase
     from bodhi_rag.conversation.application.memory import ConversationMemoryUseCase
-    from bodhi_rag.ports.chunker import ChunkerPort
-    from bodhi_rag.ports.document_parser import DocumentParserPort
-    from bodhi_rag.ports.embedding import EmbeddingPort
-    from bodhi_rag.ports.llm import LLMPort
-    from bodhi_rag.ports.vector_store import VectorStorePort
+    from bodhi_rag.domain.entities import ConversationTurn, RetrievedDocument
+    from bodhi_rag.domain.value_objects import ConversationId, DocumentId
+    from bodhi_rag.indexing.application.delete import DeleteDocumentUseCase
+    from bodhi_rag.indexing.application.index import IndexDocumentUseCase
     from bodhi_rag.retrieval.application.retrieve import RetrieveQueryUseCase
 
 
@@ -55,23 +52,17 @@ def _merge_document_metadata(
     return merged
 
 
-def _rebind_chunks(document: Document, chunks: list[Chunk]) -> list[Chunk]:
-    total_chunks = len(chunks)
-    rebound_chunks: list[Chunk] = []
-
-    for index, chunk in enumerate(chunks):
-        rebound_chunks.append(
-            Chunk(
-                id=ChunkId(document_id=document.id, chunk_index=index),
-                document_id=document.id,
-                content=chunk.content,
-                chunk_index=index,
-                total_chunks=total_chunks,
-                metadata={**document.metadata, **chunk.metadata},
-            ),
-        )
-
-    return rebound_chunks
+def _merge_document_metadata(
+    parser_metadata: dict[str, Any],
+    request_metadata: dict[str, Any],
+) -> dict[str, Any]:
+    merged = dict(parser_metadata)
+    for key, value in request_metadata.items():
+        if key in RESERVED_PROVENANCE_KEYS:
+            merged[f"user_{key}"] = value
+            continue
+        merged[key] = value
+    return merged
 
 
 def _citation_source_document(retrieved_document: RetrievedDocument) -> str:
@@ -103,24 +94,18 @@ class BhodiApplication:
     def __init__(
         self,
         *,
-        # Indexing ports (used by index_document / delete_document; will
-        # become use cases in F5-C).
-        embedding: EmbeddingPort,
-        vector_store: VectorStorePort,
-        chunker: ChunkerPort,
-        document_parser: DocumentParserPort,
-        llm: LLMPort,
-        # Use cases for the query path and conversation memory (F5-A
-        # and F5-B). Indexing use cases land in F5-C.
+        # Use cases for every public operation. F5-C: facade is now
+        # a pure orchestrator over use cases; no ports are injected
+        # directly. The composition root (Container) wires the
+        # underlying ports and the use cases.
+        index_document: IndexDocumentUseCase,
+        delete_document: DeleteDocumentUseCase,
         retrieve_query: RetrieveQueryUseCase,
         synthesize_answer: SynthesizeAnswerUseCase,
         conversation_memory: ConversationMemoryUseCase,
     ) -> None:
-        self._embedding = embedding
-        self._vector_store = vector_store
-        self._chunker = chunker
-        self._document_parser = document_parser
-        self._llm = llm
+        self._index_document = index_document
+        self._delete_document = delete_document
         self._retrieve_query = retrieve_query
         self._synthesize_answer = synthesize_answer
         self._conversation_memory = conversation_memory
@@ -128,35 +113,9 @@ class BhodiApplication:
     async def index_document(
         self, request: IndexDocumentRequest,
     ) -> IndexDocumentResponse:
-        parsed_document = await self._document_parser.parse(request.source)
-        document = Document(
-            id=parsed_document.id,
-            text=parsed_document.text,
-            metadata=_merge_document_metadata(
-                parsed_document.metadata,
-                request.metadata,
-            ),
-            indexed_at=parsed_document.indexed_at,
-        )
-
-        chunks = await self._chunker.chunk(
-            document.text,
-            chunk_size=request.chunk_size,
-            overlap=request.overlap,
-        )
-
-        rebound_chunks = _rebind_chunks(document, chunks)
-
-        embeddings = await self._embedding.embed_documents(
-            [chunk.content for chunk in rebound_chunks],
-        )
-
-        await self._vector_store.add(rebound_chunks, embeddings)
-
-        return IndexDocumentResponse(
-            document_id=str(document.id),
-            chunk_count=len(rebound_chunks),
-        )
+        # Indexing pipeline (parse -> chunk -> embed -> add) lives in
+        # the indexing bounded context as IndexDocumentUseCase.
+        return await self._index_document.execute(request)
 
     async def query(self, request: QueryRequest) -> QueryResponse:
         # Retrieval pipeline lives in the retrieval bounded context:
@@ -191,10 +150,15 @@ class BhodiApplication:
         )
 
     async def health_check(self) -> HealthStatus:
+        # F5-C: health check reports the use cases that are wired, not
+        # the underlying ports. If a use case is None, the app is
+        # misconfigured. The mapping below preserves the public
+        # service names (embedding / vector_store / llm) so the API
+        # contract is unchanged.
         services = {
-            "embedding": self._embedding is not None,
-            "vector_store": self._vector_store is not None,
-            "llm": self._llm is not None,
+            "embedding": self._index_document is not None,
+            "vector_store": self._index_document is not None,
+            "llm": self._synthesize_answer is not None,
         }
 
         status = "healthy" if all(services.values()) else "degraded"
@@ -206,7 +170,7 @@ class BhodiApplication:
 
     async def delete_document(self, document_id: DocumentId) -> None:
         """Delete a document and all its chunks."""
-        await self._vector_store.delete(document_id)
+        await self._delete_document.execute(document_id)
 
     async def get_conversation_history(
         self,
