@@ -1,7 +1,9 @@
 """
 Volatile (in-memory) conversation memory adapter.
 
-Stores conversation history in memory.
+Stores conversation history in a per-process dict. Lost on restart.
+This is the only conversation-memory adapter in F5; persistent
+adapters (SQLite, PostgreSQL) are tracked as separate work.
 """
 
 from __future__ import annotations

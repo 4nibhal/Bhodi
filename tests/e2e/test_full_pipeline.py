@@ -15,7 +15,7 @@ from bodhi_rag.application.facade import BhodiApplication
 from bodhi_rag.application.models import IndexDocumentRequest
 from bodhi_rag.domain.entities import Chunk, Document
 from bodhi_rag.domain.value_objects import ChunkId, DocumentId
-from bodhi_rag.infrastructure.conversation_memory.volatile import (
+from bodhi_rag.conversation.infrastructure.volatile import (
     VolatileConversationMemoryAdapter,
 )
 from bodhi_rag.infrastructure.embedding.mock import MockEmbeddingAdapter

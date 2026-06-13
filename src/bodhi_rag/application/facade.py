@@ -18,8 +18,8 @@ from bodhi_rag.domain.entities import Chunk, ConversationTurn, Document, Retriev
 from bodhi_rag.domain.value_objects import ChunkId, ConversationId, DocumentId
 
 if TYPE_CHECKING:
+    from bodhi_rag.conversation.ports.memory import ConversationMemoryPort
     from bodhi_rag.ports.chunker import ChunkerPort
-    from bodhi_rag.ports.conversation_memory import ConversationMemoryPort
     from bodhi_rag.ports.document_parser import DocumentParserPort
     from bodhi_rag.ports.embedding import EmbeddingPort
     from bodhi_rag.ports.llm import LLMPort
