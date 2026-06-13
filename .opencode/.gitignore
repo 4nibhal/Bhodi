@@ -1,0 +1,8 @@
+# OpenCode runtime: ignore everything in this directory except
+# the shared config (which is tracked in the repo and updated by
+# scripts/sync_opencode_agents.py) and the override example.
+# Per-machine overrides go in opencode.local.json (also ignored).
+*
+!.gitignore
+!opencode.json
+!opencode.local.example.json

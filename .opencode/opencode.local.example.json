@@ -1,0 +1,28 @@
+{
+  "_comment": [
+    "This is the per-machine override template. Copy this file to",
+    ".opencode/opencode.local.json and edit the copy. The values",
+    "defined here are merged on top of the tracked opencode.json,",
+    "with the local copy winning. opencode.local.json is gitignored,",
+    "so your machine-specific paths and tokens never reach the repo.",
+    "",
+    "Typical overrides:",
+    "  - paths in bash permission patterns (machine-specific)",
+    "  - extra tools that should be denied on a locked-down workstation",
+    "  - environment-specific instructions appended to the system prompt",
+    "",
+    "The merge shape mirrors opencode.json: any nested dict is",
+    "recursively merged, any other value replaces. To UNSET a value",
+    "set it to null. See scripts/sync_opencode_agents.py for the",
+    "rationale and history."
+  ],
+  "permission": {
+    "bash": {
+      "_comment_underscore_key_is_dropped_at_merge": "Keys starting with _ are not valid OpenCode config; they exist only as in-file docs.",
+      "gh workflow run *": "ask"
+    }
+  },
+  "instructions": [
+    "Override example: on this machine, prefer 'podman' over 'docker' in all generated commands."
+  ]
+}
