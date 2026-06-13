@@ -63,7 +63,16 @@ class Container:
 
     def build(self) -> BhodiApplication:
         """Build and return a fully wired BhodiApplication."""
+        from bodhi_rag.answering.application.synthesize import (
+            SynthesizeAnswerUseCase,
+        )
         from bodhi_rag.application.facade import BhodiApplication
+        from bodhi_rag.conversation.application.memory import (
+            ConversationMemoryUseCase,
+        )
+        from bodhi_rag.retrieval.application.retrieve import (
+            RetrieveQueryUseCase,
+        )
 
         return BhodiApplication(
             embedding=self._get_adapter(EmbeddingPort),
@@ -71,8 +80,17 @@ class Container:
             chunker=self._get_adapter(ChunkerPort),
             document_parser=self._get_adapter(DocumentParserPort),
             llm=self._get_adapter(LLMPort),
-            conversation_memory=self._get_adapter(ConversationMemoryPort),
-            reranker=self._get_adapter(RerankerPort),
+            retrieve_query=RetrieveQueryUseCase(
+                embedding=self._get_adapter(EmbeddingPort),
+                vector_store=self._get_adapter(VectorStorePort),
+                reranker=self._get_adapter(RerankerPort),
+            ),
+            synthesize_answer=SynthesizeAnswerUseCase(
+                llm=self._get_adapter(LLMPort),
+            ),
+            conversation_memory=ConversationMemoryUseCase(
+                self._get_adapter(ConversationMemoryPort),
+            ),
         )
 
     def _get_adapter(self, port_type: type) -> object:

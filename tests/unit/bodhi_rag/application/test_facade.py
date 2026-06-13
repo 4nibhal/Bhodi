@@ -22,26 +22,50 @@ def _build_app(
     document_parser: AsyncMock | None = None,
     llm: AsyncMock | None = None,
     conversation_memory: AsyncMock | None = None,
-    reranker: AsyncMock | None = None,
+    reranker: AsyncMock | None = None,  # noqa: ARG001  # kept for Wave 3b test signatures
+    retrieve_query: AsyncMock | None = None,
+    synthesize_answer: AsyncMock | None = None,
 ) -> BhodiApplication:
-    reranker_mock = reranker or AsyncMock()
-    # Wave 3b: facade calls `self._reranker.overfetch_factor` (an int) to
-    # compute the overfetched retrieval size, then `self._reranker.rerank(...)`
-    # which must return an iterable. Configure the default mock so tests
-    # that don't care about reranking still work end-to-end.
-    if not reranker:
-        reranker_mock.overfetch_factor = 1
-        reranker_mock.rerank.side_effect = (
-            lambda _query, chunks, top_k=None: list(chunks if top_k is None else chunks[:top_k])
+    # F5-B: facade takes use cases for the query path. Build default
+    # AsyncMock-based use cases that passthrough their input when the
+    # test doesn't supply a custom one, so legacy tests that don't
+    # care about the bounded context wiring still work end-to-end.
+    def _make_passthrough_rerank() -> AsyncMock:
+        m = AsyncMock()
+        m.overfetch_factor = 1
+        m.rerank.side_effect = (
+            lambda _q, chunks, top_k=None: list(chunks if top_k is None else chunks[:top_k])
         )
+        return m
+
+    def _make_passthrough_retrieve() -> AsyncMock:
+        m = AsyncMock()
+
+        async def _execute(_question: str, _top_k: int) -> list[RetrievedDocument]:
+            return []
+
+        m.execute.side_effect = _execute
+        return m
+
+    def _make_passthrough_synthesize() -> AsyncMock:
+        m = AsyncMock()
+        m.execute.return_value = "Answer"
+        return m
+
+    def _make_passthrough_conversation_memory() -> AsyncMock:
+        m = AsyncMock()
+        m.get_history.return_value = []
+        return m
+
     return BhodiApplication(
         embedding=embedding or AsyncMock(),
         vector_store=vector_store or AsyncMock(),
         chunker=chunker or AsyncMock(),
         document_parser=document_parser or AsyncMock(),
         llm=llm or AsyncMock(),
-        conversation_memory=conversation_memory or AsyncMock(),
-        reranker=reranker_mock,
+        retrieve_query=retrieve_query or _make_passthrough_retrieve(),
+        synthesize_answer=synthesize_answer or _make_passthrough_synthesize(),
+        conversation_memory=conversation_memory or _make_passthrough_conversation_memory(),
     )
 
 
@@ -148,7 +172,23 @@ async def test_query_uses_human_provenance_in_citations() -> None:
     llm = AsyncMock()
     llm.generate_with_context.return_value = "Answer"
 
-    app = _build_app(embedding=embedding, vector_store=vector_store, llm=llm)
+    # F5-B: the facade delegates to the retrieval and answer-synthesis
+    # use cases. The legacy port-level mocks are no longer consulted;
+    # mock the use cases directly. The vector_store/llm mocks are
+    # kept here only as documentation of what the use cases would
+    # call under the hood.
+    retrieve_query = AsyncMock()
+    retrieve_query.execute.return_value = [retrieved]
+    synthesize_answer = AsyncMock()
+    synthesize_answer.execute.return_value = "Answer"
+
+    app = _build_app(
+        embedding=embedding,
+        vector_store=vector_store,
+        llm=llm,
+        retrieve_query=retrieve_query,
+        synthesize_answer=synthesize_answer,
+    )
 
     response = await app.query(QueryRequest(question="What happened?", top_k=1))
 
@@ -178,126 +218,89 @@ async def test_health_check_is_non_invasive() -> None:
     vector_store.persist.assert_not_called()
 
 
-# --- Wave 3b: reranker integration -------------------------------------
+# --- Wave 3b / F5-B: reranker integration through use cases -------------
 
 
 @pytest.mark.asyncio
 async def test_query_overfetches_then_reranks_then_trims_to_top_k() -> None:
-    """Overfetch from the store, rerank the candidates, trim to top_k, then hand off."""
+    """retrieve_query.execute() and synthesize_answer.execute() are called with the right inputs."""
     doc_id = DocumentId("44444444-4444-4444-4444-444444444444")
-    candidates = [
+    reranked = [
         RetrievedDocument(
-            chunk_id=ChunkId(document_id=doc_id, chunk_index=i),
+            chunk_id=ChunkId(document_id=doc_id, chunk_index=5),
             document_id=doc_id,
-            text=f"chunk {i}",
-            score=float(i),
-            metadata={"idx": i},
-        )
-        for i in range(8)
+            text="chunk 5",
+            score=0.9,
+            metadata={"idx": 5},
+        ),
+        RetrievedDocument(
+            chunk_id=ChunkId(document_id=doc_id, chunk_index=2),
+            document_id=doc_id,
+            text="chunk 2",
+            score=0.5,
+            metadata={"idx": 2},
+        ),
     ]
-    # Reranker "promotes" idx=5 to the front and trims to top_k=2.
-    reranked = [candidates[5], candidates[2]]
 
-    embedding = AsyncMock()
-    embedding.embed_query.return_value = [0.1]
-    vector_store = AsyncMock()
-    vector_store.search.return_value = candidates
-    reranker = AsyncMock()
-    reranker.overfetch_factor = 4
-    reranker.rerank.return_value = reranked
-    llm = AsyncMock()
-    llm.generate_with_context.return_value = "promoted answer"
+    retrieve_query = AsyncMock()
+    retrieve_query.execute.return_value = reranked
+    synthesize_answer = AsyncMock()
+    synthesize_answer.execute.return_value = "promoted answer"
 
     app = _build_app(
-        embedding=embedding,
-        vector_store=vector_store,
-        reranker=reranker,
-        llm=llm,
+        retrieve_query=retrieve_query,
+        synthesize_answer=synthesize_answer,
     )
 
     response = await app.query(QueryRequest(question="q", top_k=2))
 
-    # The vector store must be asked for top_k * overfetch_factor.
-    vector_store.search.assert_awaited_once()
-    assert vector_store.search.await_args.args[1] == 8  # 2 * 4
+    # The retrieval use case must be called with (question, top_k).
+    retrieve_query.execute.assert_awaited_once_with("q", 2)
 
-    # The reranker must receive the overfetched candidates and trim to top_k.
-    reranker.rerank.assert_awaited_once()
-    args, kwargs = reranker.rerank.await_args
+    # The answer synthesis use case must receive the retrieved (reranked) list.
+    args, kwargs = synthesize_answer.execute.await_args
     assert args[0] == "q"
-    assert args[1] == candidates
-    assert kwargs["top_k"] == 2
+    assert args[1] == reranked
+    assert kwargs["temperature"] == 0.7  # QueryRequest default
 
-    # The LLM and the citations must use the reranked list, not the raw one.
-    assert llm.generate_with_context.await_args.args[1] == reranked
+    # The response uses the synthesized text and reranked citations.
+    assert response.answer_text == "promoted answer"
     assert [c.text for c in response.citations] == ["chunk 5", "chunk 2"]
 
 
 @pytest.mark.asyncio
-async def test_query_uses_noop_passthrough_when_overfetch_factor_is_one() -> None:
-    """NoOpReranker with overfetch_factor=1 preserves pre-Wave-3b behavior exactly."""
-    doc_id = DocumentId("55555555-5555-5555-5555-555555555555")
-    chunks = [
-        RetrievedDocument(
-            chunk_id=ChunkId(document_id=doc_id, chunk_index=i),
-            document_id=doc_id,
-            text=f"chunk {i}",
-            score=float(i),
-            metadata={"idx": i},
-        )
-        for i in range(3)
-    ]
-
-    embedding = AsyncMock()
-    embedding.embed_query.return_value = [0.1]
-    vector_store = AsyncMock()
-    vector_store.search.return_value = chunks
-    reranker = AsyncMock()
-    reranker.overfetch_factor = 1
-    reranker.rerank.side_effect = (
-        lambda _q, c, top_k=None: list(c if top_k is None else c[:top_k])
-    )
-    llm = AsyncMock()
-    llm.generate_with_context.return_value = "answer"
+async def test_query_passes_temperature_from_request() -> None:
+    """The temperature field in QueryRequest reaches the synthesize_answer use case."""
+    retrieve_query = AsyncMock()
+    retrieve_query.execute.return_value = []
+    synthesize_answer = AsyncMock()
+    synthesize_answer.execute.return_value = "answer"
 
     app = _build_app(
-        embedding=embedding,
-        vector_store=vector_store,
-        reranker=reranker,
-        llm=llm,
+        retrieve_query=retrieve_query,
+        synthesize_answer=synthesize_answer,
     )
 
-    response = await app.query(QueryRequest(question="q", top_k=3))
+    await app.query(QueryRequest(question="q", top_k=3, temperature=0.42))
 
-    # Vector store asked for exactly top_k (no overfetch).
-    assert vector_store.search.await_args.args[1] == 3
-    # Reranker trimmed to top_k (no-op truncation).
-    assert len(response.citations) == 3
-    assert [c.text for c in response.citations] == ["chunk 0", "chunk 1", "chunk 2"]
+    _args, kwargs = synthesize_answer.execute.await_args
+    assert kwargs["temperature"] == 0.42
 
 
 @pytest.mark.asyncio
-async def test_query_does_not_overfetch_below_top_k() -> None:
-    """overfetch_factor=0 must still yield at least top_k from the store (no under-fetch)."""
-    embedding = AsyncMock()
-    embedding.embed_query.return_value = [0.1]
-    vector_store = AsyncMock()
-    vector_store.search.return_value = []
-    reranker = AsyncMock()
-    reranker.overfetch_factor = 0
-    reranker.rerank.return_value = []
-    llm = AsyncMock()
-    llm.generate_with_context.return_value = ""
+async def test_query_propagates_empty_retrieval() -> None:
+    """Empty retrieval (cold start, no docs) produces an answer with no citations."""
+    retrieve_query = AsyncMock()
+    retrieve_query.execute.return_value = []
+    synthesize_answer = AsyncMock()
+    synthesize_answer.execute.return_value = "no-docs answer"
 
     app = _build_app(
-        embedding=embedding,
-        vector_store=vector_store,
-        reranker=reranker,
-        llm=llm,
+        retrieve_query=retrieve_query,
+        synthesize_answer=synthesize_answer,
     )
 
-    await app.query(QueryRequest(question="q", top_k=5))
+    response = await app.query(QueryRequest(question="q", top_k=5))
 
-    assert vector_store.search.await_args.args[1] == 5
-
-    llm.generate.assert_not_called()
+    assert response.answer_text == "no-docs answer"
+    assert response.citations == []

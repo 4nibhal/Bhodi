@@ -18,13 +18,14 @@ from bodhi_rag.domain.entities import Chunk, ConversationTurn, Document, Retriev
 from bodhi_rag.domain.value_objects import ChunkId, ConversationId, DocumentId
 
 if TYPE_CHECKING:
-    from bodhi_rag.conversation.ports.memory import ConversationMemoryPort
+    from bodhi_rag.answering.application.synthesize import SynthesizeAnswerUseCase
+    from bodhi_rag.conversation.application.memory import ConversationMemoryUseCase
     from bodhi_rag.ports.chunker import ChunkerPort
     from bodhi_rag.ports.document_parser import DocumentParserPort
     from bodhi_rag.ports.embedding import EmbeddingPort
     from bodhi_rag.ports.llm import LLMPort
-    from bodhi_rag.ports.reranker import RerankerPort
     from bodhi_rag.ports.vector_store import VectorStorePort
+    from bodhi_rag.retrieval.application.retrieve import RetrieveQueryUseCase
 
 
 RESERVED_PROVENANCE_KEYS = frozenset(
@@ -101,21 +102,28 @@ def _citation_page(metadata: dict[str, Any]) -> int | None:
 class BhodiApplication:
     def __init__(
         self,
+        *,
+        # Indexing ports (used by index_document / delete_document; will
+        # become use cases in F5-C).
         embedding: EmbeddingPort,
         vector_store: VectorStorePort,
         chunker: ChunkerPort,
         document_parser: DocumentParserPort,
         llm: LLMPort,
-        conversation_memory: ConversationMemoryPort,
-        reranker: RerankerPort,
+        # Use cases for the query path and conversation memory (F5-A
+        # and F5-B). Indexing use cases land in F5-C.
+        retrieve_query: RetrieveQueryUseCase,
+        synthesize_answer: SynthesizeAnswerUseCase,
+        conversation_memory: ConversationMemoryUseCase,
     ) -> None:
         self._embedding = embedding
         self._vector_store = vector_store
         self._chunker = chunker
         self._document_parser = document_parser
         self._llm = llm
+        self._retrieve_query = retrieve_query
+        self._synthesize_answer = synthesize_answer
         self._conversation_memory = conversation_memory
-        self._reranker = reranker
 
     async def index_document(
         self, request: IndexDocumentRequest,
@@ -151,26 +159,18 @@ class BhodiApplication:
         )
 
     async def query(self, request: QueryRequest) -> QueryResponse:
-        query_embedding = await self._embedding.embed_query(request.question)
-
-        # Overfetch: ask the vector store for more candidates than the final
-        # top_k so the reranker has room to reorder without dropping
-        # high-relevance items that the raw vector similarity ranked just
-        # below the cutoff. The factor comes from the active reranker
-        # adapter; NoOpReranker typically reports 1 (no overfetch).
-        overfetch_top_k = max(request.top_k * self._reranker.overfetch_factor, request.top_k)
-
-        candidates = await self._vector_store.search(query_embedding, overfetch_top_k)
-
-        reranked = await self._reranker.rerank(
+        # Retrieval pipeline lives in the retrieval bounded context:
+        # embed -> vector store (overfetch) -> rerank -> trim to top_k.
+        retrieved = await self._retrieve_query.execute(
             request.question,
-            candidates,
-            top_k=request.top_k,
+            request.top_k,
         )
 
-        answer_text = await self._llm.generate_with_context(
+        # Answer synthesis lives in the answering bounded context:
+        # LLM call with the reranked contexts.
+        answer_text = await self._synthesize_answer.execute(
             request.question,
-            reranked,
+            retrieved,
             temperature=request.temperature,
         )
 
@@ -181,7 +181,7 @@ class BhodiApplication:
                 source_document=_citation_source_document(doc),
                 page=_citation_page(doc.metadata),
             )
-            for doc in reranked
+            for doc in retrieved
         ]
 
         return QueryResponse(
