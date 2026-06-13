@@ -213,7 +213,7 @@ class Container:
         provider = self._config.reranker.provider.lower()
 
         if provider == "noop":
-            return NoOpReranker()
+            return NoOpReranker(self._config.reranker)
 
         if provider == "cross_encoder":
             return CrossEncoderReranker(self._config.reranker)

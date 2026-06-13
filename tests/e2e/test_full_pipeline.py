@@ -5,29 +5,29 @@ import pytest
 from bodhi_rag._version import get_version
 from bodhi_rag.application.config import (
     BhodiConfig,
-    EmbeddingConfig,
-    VectorStoreConfig,
     ChunkerConfig,
-    LLMConfig,
     ConversationConfig,
+    EmbeddingConfig,
+    LLMConfig,
+    VectorStoreConfig,
 )
-from bodhi_rag.application.models import IndexDocumentRequest
 from bodhi_rag.application.facade import BhodiApplication
-from bodhi_rag.infrastructure.embedding.mock import MockEmbeddingAdapter
-from bodhi_rag.infrastructure.vector_store.in_memory import MockVectorStoreAdapter
-from bodhi_rag.infrastructure.llm.mock import MockLLMAdapter
+from bodhi_rag.application.models import IndexDocumentRequest
+from bodhi_rag.domain.entities import Chunk, Document
+from bodhi_rag.domain.value_objects import ChunkId, DocumentId
 from bodhi_rag.infrastructure.conversation_memory.volatile import (
     VolatileConversationMemoryAdapter,
 )
+from bodhi_rag.infrastructure.embedding.mock import MockEmbeddingAdapter
+from bodhi_rag.infrastructure.llm.mock import MockLLMAdapter
 from bodhi_rag.infrastructure.reranker.noop import NoOpReranker
-from bodhi_rag.domain.entities import Chunk, Document
-from bodhi_rag.domain.value_objects import ChunkId, DocumentId
+from bodhi_rag.infrastructure.vector_store.in_memory import MockVectorStoreAdapter
 
 
 class SimpleChunkerAdapter:
     """Minimal chunker - returns single chunk."""
 
-    def __init__(self, config: ChunkerConfig):
+    def __init__(self, config: ChunkerConfig) -> None:
         pass
 
     @property
@@ -47,7 +47,7 @@ class SimpleChunkerAdapter:
                 content=text[:100],
                 chunk_index=0,
                 total_chunks=1,
-            )
+            ),
         ]
 
 
@@ -57,7 +57,7 @@ class SimpleParserAdapter:
     async def parse(self, source):
         return Document(id=DocumentId(), text="Test document content")
 
-    async def extract_text(self, source):
+    async def extract_text(self, source) -> str:
         return "Test document content"
 
     async def extract_metadata(self, source):
@@ -80,12 +80,12 @@ def app():
         document_parser=SimpleParserAdapter(),
         llm=MockLLMAdapter(config.llm),
         conversation_memory=VolatileConversationMemoryAdapter(config.conversation),
-        reranker=NoOpReranker(),
+        reranker=NoOpReranker(config.reranker),
     )
 
 
 @pytest.mark.asyncio
-async def test_health_check(app):
+async def test_health_check(app) -> None:
     """Health check should return healthy status."""
     status = await app.health_check()
     assert status.status == "healthy"
@@ -93,10 +93,8 @@ async def test_health_check(app):
 
 
 @pytest.mark.asyncio
-async def test_index_document(app):
+async def test_index_document(app) -> None:
     """Index a document and get back document ID."""
-    from bodhi_rag.application.models import IndexDocumentRequest
-
     request = IndexDocumentRequest(source="test.pdf")
     response = await app.index_document(request)
 
@@ -105,9 +103,9 @@ async def test_index_document(app):
 
 
 @pytest.mark.asyncio
-async def test_query(app):
+async def test_query(app) -> None:
     """Query the index after indexing a document."""
-    from bodhi_rag.application.models import IndexDocumentRequest, QueryRequest
+    from bodhi_rag.application.models import QueryRequest
 
     # Index first
     await app.index_document(IndexDocumentRequest(source="test.pdf"))

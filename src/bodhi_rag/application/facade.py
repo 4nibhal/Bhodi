@@ -153,11 +153,24 @@ class BhodiApplication:
     async def query(self, request: QueryRequest) -> QueryResponse:
         query_embedding = await self._embedding.embed_query(request.question)
 
-        retrieved = await self._vector_store.search(query_embedding, request.top_k)
+        # Overfetch: ask the vector store for more candidates than the final
+        # top_k so the reranker has room to reorder without dropping
+        # high-relevance items that the raw vector similarity ranked just
+        # below the cutoff. The factor comes from the active reranker
+        # adapter; NoOpReranker typically reports 1 (no overfetch).
+        overfetch_top_k = max(request.top_k * self._reranker.overfetch_factor, request.top_k)
+
+        candidates = await self._vector_store.search(query_embedding, overfetch_top_k)
+
+        reranked = await self._reranker.rerank(
+            request.question,
+            candidates,
+            top_k=request.top_k,
+        )
 
         answer_text = await self._llm.generate_with_context(
             request.question,
-            retrieved,
+            reranked,
             temperature=request.temperature,
         )
 
@@ -168,7 +181,7 @@ class BhodiApplication:
                 source_document=_citation_source_document(doc),
                 page=_citation_page(doc.metadata),
             )
-            for doc in retrieved
+            for doc in reranked
         ]
 
         return QueryResponse(

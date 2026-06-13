@@ -23,6 +23,8 @@ def _make_chunk(idx: int) -> RetrievedDocument:
 class _StubReranker:
     """Minimal stand-in that implements the RerankerPort shape."""
 
+    overfetch_factor: int = 1
+
     async def rerank(
         self,
         query: str,  # noqa: ARG002
@@ -47,6 +49,14 @@ def test_reranker_port_protocol_annotates_inputs() -> None:
     assert "chunks" in hints
     assert "top_k" in hints
     assert "return" in hints
+
+
+def test_reranker_port_declares_overfetch_factor() -> None:
+    """The protocol exposes the overfetch_factor knob for the pipeline."""
+    # The protocol attribute is a property; checking the name is enough
+    # because the @runtime_checkable test above already proved the
+    # structural shape works end-to-end.
+    assert "overfetch_factor" in dir(RerankerPort)
 
 
 def test_rerank_input_chunks_are_preserved_in_count() -> None:

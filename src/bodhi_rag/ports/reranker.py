@@ -30,6 +30,23 @@ class RerankerPort(Protocol):
     reflect the reranker's relevance signal (higher = more relevant).
     """
 
+    @property
+    def overfetch_factor(self) -> int:
+        """
+        Multiplier on `top_k` for the pre-rerank vector-store search.
+
+        A value of 1 means "fetch exactly top_k candidates and
+        rerank/pass-through that many". A value >1 means "fetch
+        top_k * factor candidates so the reranker has room to reorder
+        without losing high-relevance items that ranked just below
+        the cutoff in raw similarity".
+
+        The NoOpReranker exposes this knob (so the pipeline can be
+        tuned even when no actual rerank is performed) but does not
+        itself use it; the calling pipeline reads the value.
+        """
+        ...
+
     async def rerank(
         self,
         query: str,
